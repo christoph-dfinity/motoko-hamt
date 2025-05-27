@@ -1,0 +1,176 @@
+import Bench "mo:bench";
+import Blob "mo:base/Blob";
+import Debug "mo:base/Debug";
+import Fnv "../src/Fnv";
+import Hamt "../src/Map";
+import Hasher "mo:siphash/Hasher";
+import Hashtable "mo:hashmap/Map";
+import Iter "mo:base/Iter";
+import Map "mo:new-base/Map";
+import Nat "mo:base/Nat";
+import Nat32 "mo:base/Nat32";
+import Nat64 "mo:base/Nat64";
+import PureMap "mo:new-base/pure/Map";
+import Sip13 "mo:siphash/Sip13";
+import Text "mo:base/Text";
+
+module {
+
+  public func init() : Bench.Bench {
+    let hasher = Sip13.SipHasher13(13, 37);
+
+    func fnv32Blob(b : Blob) : Nat32 {
+      Fnv.hash32Blob(b)
+    };
+
+    func fnv64Blob(b : Blob) : Nat64 {
+      Fnv.hash64Blob(b)
+    };
+
+    func sip32Blob(b : Blob) : Nat32 {
+      hasher.reset();
+      hasher.writeBlob(b);
+      let hash = hasher.finish();
+      Nat64.toNat32(hash >> 32)
+    };
+
+    func sip64Blob(b : Blob) : Nat64 {
+      hasher.reset();
+      hasher.writeBlob(b);
+      hasher.finish();
+    };
+
+    func blob(n : Nat) : Blob {
+      Text.encodeUtf8(Nat.toText(n));
+    };
+
+    func blobWrong(n : Nat) : Blob {
+      Text.encodeUtf8("a" # Nat.toText(n));
+    };
+
+    let blobHashUtilsSip : Hashtable.HashUtils<Blob> = (sip32Blob, Blob.equal);
+    let blobHashUtilsFnv : Hashtable.HashUtils<Blob> = (fnv32Blob, Blob.equal);
+
+    let bench = Bench.Bench();
+
+    bench.name("Comparing Hash-based and Ordered Maps");
+    bench.description("Adds, retrieves, and deletes n map entries");
+
+    bench.rows([
+      "OrderedMap",
+
+      "HAMT - Sip",
+      "HAMT - Fnv",
+
+      "Hashtable - Sip",
+      "Hashtable - Fnv",
+
+      "pure/Map",
+    ]);
+    bench.cols([
+      "0",
+      "100",
+      "10000",
+      "500000",
+    ]);
+
+    bench.runner(func(row, col) {
+      let ?n = Nat.fromText(col);
+
+      if (row == "HAMT - Sip") {
+        let hamt = Hamt.new<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          ignore Hamt.add(sip64Blob, Blob.equal, hamt, blob(n), i);
+        };
+
+        for (i in Iter.range(1, n)) {
+          ignore Hamt.get(sip64Blob, Blob.equal, hamt, blob(i));
+          ignore Hamt.get(sip64Blob, Blob.equal, hamt, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore Hamt.remove(sip64Blob, Blob.equal, hamt, blob(i));
+        };
+      };
+
+      if (row == "HAMT - Fnv") {
+        let hamt = Hamt.new<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          ignore Hamt.add(fnv64Blob, Blob.equal, hamt, blob(n), i);
+        };
+
+        for (i in Iter.range(1, n)) {
+          ignore Hamt.get(fnv64Blob, Blob.equal, hamt, blob(i));
+          ignore Hamt.get(fnv64Blob, Blob.equal, hamt, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore Hamt.remove(fnv64Blob, Blob.equal, hamt, blob(i));
+        };
+      };
+
+      if (row == "OrderedMap") {
+        let map = Map.empty<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          Map.add(map, Blob.compare, blob(i), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore Map.get(map, Blob.compare, blob(i));
+          ignore Map.get(map, Blob.compare, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore Map.remove(map, Blob.compare, blob(i));
+        };
+      };
+
+      if (row == "pure/Map") {
+        var map = PureMap.empty<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          map := PureMap.add(map, Blob.compare, blob(i), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore PureMap.get(map, Blob.compare, blob(i));
+          ignore PureMap.get(map, Blob.compare, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          map := PureMap.remove(map, Blob.compare, blob(i));
+        };
+      };
+
+      if (row == "Hashtable - Sip") {
+        let map = Hashtable.new<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          ignore Hashtable.put(map, blobHashUtilsSip, blob(i), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore Hashtable.get(map, blobHashUtilsSip, blob(i));
+          ignore Hashtable.get(map, blobHashUtilsSip, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore Hashtable.remove(map, blobHashUtilsSip, blob(i));
+        };
+      };
+
+      if (row == "Hashtable - Fnv") {
+        let map = Hashtable.new<Blob, Nat>();
+        for (i in Iter.range(1, n)) {
+          ignore Hashtable.put(map, blobHashUtilsFnv, blob(i), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore Hashtable.get(map, blobHashUtilsFnv, blob(i));
+          ignore Hashtable.get(map, blobHashUtilsFnv, blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore Hashtable.remove(map, blobHashUtilsFnv, blob(i));
+        };
+      };
+
+    });
+
+    bench;
+  };
+};

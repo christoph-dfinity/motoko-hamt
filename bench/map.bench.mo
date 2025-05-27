@@ -6,6 +6,7 @@ import Hamt "../src/Map";
 import Hasher "mo:siphash/Hasher";
 import Hashtable "mo:hashmap/Map";
 import Iter "mo:base/Iter";
+import OldHashMap "mo:base/HashMap";
 import Map "mo:new-base/Map";
 import Nat "mo:base/Nat";
 import Nat32 "mo:base/Nat32";
@@ -13,6 +14,7 @@ import Nat64 "mo:base/Nat64";
 import PureMap "mo:new-base/pure/Map";
 import Sip13 "mo:siphash/Sip13";
 import Text "mo:base/Text";
+import Trie "mo:base/Trie";
 
 module {
 
@@ -66,6 +68,9 @@ module {
       "Hashtable - Fnv",
 
       "pure/Map",
+
+      "oldbase/HashMap - Sip",
+      "oldbase/Trie - Sip",
     ]);
     bench.cols([
       "0",
@@ -166,6 +171,37 @@ module {
 
         for (i in Iter.range(n + 1, n + n)) {
           ignore Hashtable.remove(map, blobHashUtilsFnv, blob(i));
+        };
+      };
+
+      if (row == "oldbase/HashMap - Sip") {
+        let map = OldHashMap.HashMap<Blob, Nat>(0, Blob.equal, sip32Blob);
+        for (i in Iter.range(1, n)) {
+          ignore map.put(blob(i), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore map.get(blob(i));
+          ignore map.get(blobWrong(i));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          ignore map.remove(blob(i));
+        };
+      };
+
+      if (row == "oldbase/Trie - Sip") {
+        func key(b: Blob) : Trie.Key<Blob> { { hash = sip32Blob(b); key = b } };
+        var map : Trie.Trie<Blob, Nat> = Trie.empty();
+        for (i in Iter.range(1, n)) {
+          map := Trie.put(map, key(blob(i)), Blob.equal, i).0;
+        };
+        for (i in Iter.range(1, n)) {
+          ignore Trie.get(map, key(blob(i)), Blob.equal);
+          ignore Trie.get(map, key(blobWrong(i)), Blob.equal);
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          map := Trie.remove(map, key(blob(i)), Blob.equal).0;
         };
       };
 

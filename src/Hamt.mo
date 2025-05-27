@@ -55,7 +55,7 @@ module {
         };
       };
     };
-    showNode(hamt.root);
+    showNode(#bitMapped(hamt.root));
   };
 
   public func showStructure<A>(hamt : Hamt<A>) : Text {
@@ -74,24 +74,25 @@ module {
         };
       };
     };
-    showNode(hamt.root);
+    showNode(#bitMapped(hamt.root));
   };
 
   public type Hamt<A> = {
-    var root : { #bitMapped : Bitmapped<A> };
+    var root : Bitmapped<A>;
   };
 
-  public func new<A>() : Hamt<A> = { var root = emptyNode() };
+  public func new<A>() : Hamt<A> = { var root = {
+    var bitmap = 0;
+    var nodes = [var];
+  }};
 
   public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    let #bitMapped(rootNode) = hamt.root;
-    let { result = #success(_, v) } = getWithAnchor(rootNode, 0, hash) else return null;
+    let { result = #success(_, v) } = getWithAnchor(hamt.root, 0, hash) else return null;
     ?v
   };
 
   public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
-    let #bitMapped(rootNode) = hamt.root;
-    let getResult = getWithAnchor(rootNode, 0, hash);
+    let getResult = getWithAnchor(hamt.root, 0, hash);
     let n = getResult.anchor;
     switch (getResult.result) {
       case (#success(prev)) {
@@ -117,8 +118,7 @@ module {
   };
 
   public func remove<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    let #bitMapped(rootNode) = hamt.root;
-    switch (removeRec(rootNode, 0, hash)) {
+    switch (removeRec(hamt.root, 0, hash)) {
       case (#notFound) null;
       case (#success(l)) ?l.1;
       case (#gathered(_)) Debug.trap("Must never gather the root node");
@@ -152,11 +152,6 @@ module {
 
   type Bitmapped<A> = { var bitmap : Bitmap; var nodes : [var Node<A>] };
   type Leaf<A> = (Hash, A);
-
-  func emptyNode<A>() : { #bitMapped : Bitmapped<A> } = #bitMapped({
-    var bitmap = 0;
-    var nodes = [var];
-  });
 
   type Anchor<A> = Bitmapped<A>;
 

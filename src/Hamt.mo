@@ -87,31 +87,30 @@ module {
   }};
 
   public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    let { result = #success(_, v) } = getWithAnchor(hamt.root, 0, hash) else return null;
+    let (_, _, #success(_, v)) = getWithAnchor(hamt.root, 0, hash) else return null;
     ?v
   };
 
   public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
-    let getResult = getWithAnchor(hamt.root, 0, hash);
-    let n = getResult.anchor;
-    switch (getResult.result) {
+    let (shift, anchor, result) = getWithAnchor(hamt.root, 0, hash);
+    switch (result) {
       case (#success(prev)) {
-        let ix = hashIndex(hash, n.bitmap, getResult.shift);
-        n.nodes[ix] := #leaf(hash, value);
+        let ix = hashIndex(hash, anchor.bitmap, shift);
+        anchor.nodes[ix] := #leaf(hash, value);
         ?prev.1;
       };
       case (#missing) {
-        let pos = bitpos(hash, getResult.shift);
-        n.bitmap |= pos;
-        let ix = index(n.bitmap, pos);
-        let newNodes = insertVarArray(n.nodes, #leaf((hash, value)), ix);
-        n.nodes := newNodes;
+        let pos = bitpos(hash, shift);
+        anchor.bitmap |= pos;
+        let ix = index(anchor.bitmap, pos);
+        let newNodes = insertVarArray(anchor.nodes, #leaf((hash, value)), ix);
+        anchor.nodes := newNodes;
         null;
       };
       case (#conflict(prev)) {
-        let ix = hashIndex(hash, n.bitmap, getResult.shift);
-        let newNode = mergeLeafs<A>(getResult.shift + BITS_PER_LEVEL, prev, hash, value);
-        n.nodes[ix] := #bitMapped(newNode);
+        let ix = hashIndex(hash, anchor.bitmap, shift);
+        let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, value);
+        anchor.nodes[ix] := #bitMapped(newNode);
         null;
       };
     };
@@ -155,24 +154,24 @@ module {
 
   type Anchor<A> = Bitmapped<A>;
 
-  type GetResult<A> = {
-    shift : Nat;
-    anchor : Anchor<A>;
-    result : { #success : Leaf<A>; #conflict : Leaf<A>; #missing };
-  };
+  type GetResult<A> = (
+    shift : Nat,
+    anchor : Anchor<A>,
+    result : { #success : Leaf<A>; #conflict : Leaf<A>; #missing },
+  );
 
   func getWithAnchor<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
     let pos = bitpos(hash, shift);
     if ((anchor.bitmap & pos) == 0) {
-      return { shift; anchor; result = #missing; };
+      return (shift, anchor, #missing);
     };
     let ix = index(anchor.bitmap, pos);
     switch (anchor.nodes[ix]) {
       case (#leaf(l)) {
         if (l.0 == hash) {
-          { shift; anchor; result = #success(l); } ;
+          (shift, anchor, #success(l)) ;
         } else {
-          { shift; anchor; result = #conflict(l); };
+          (shift, anchor, #conflict(l));
         };
       };
       case (#bitMapped(bm)) {
@@ -200,8 +199,8 @@ module {
   };
 
   type RemoveResult<A> = {
-    #success : Leaf<A>;
     #notFound;
+    #success : Leaf<A>;
     #gathered : { newNode : Leaf<A>; removed : Leaf<A> };
   };
 

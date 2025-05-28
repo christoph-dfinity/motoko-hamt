@@ -21,7 +21,6 @@ let suite = S.suite("HAMT", [
     ignore Hamt.add(hamt, (64 : Nat64), 64);
     ignore Hamt.add(hamt, (64 * 64: Nat64), 64 * 64);
     ignore Hamt.add(hamt, (64 * 64 * 64: Nat64), 64 * 64 * 64);
-    Debug.print(Hamt.showStructure(hamt));
     Hamt.get(hamt, (64 * 64 : Nat64));
   }, M.equals(T.optional(T.natTestable, ?(64 * 64)))),
   S.test("add overlapping hashes", do {
@@ -73,6 +72,15 @@ let suite = S.suite("HAMT", [
     };
     sum
   }, M.equals(T.nat(5050))),
+  S.test("Test compaction on remove", do {
+    let hamt = Hamt.new<Nat>();
+    ignore Hamt.add(hamt, (0 : Nat64), 0);
+    ignore Hamt.add(hamt, (64 * 64 : Nat64), 64 * 64);
+    let nestedDepth = Hamt.maxDepth(hamt);
+    ignore Hamt.remove(hamt, (0 : Nat64));
+    let depthAfterRemoval = Hamt.maxDepth(hamt);
+    (nestedDepth, depthAfterRemoval)
+  }, M.equals(T.tuple2(T.natTestable, T.natTestable, (3, 1)))),
 ]);
 
 S.run(suite);

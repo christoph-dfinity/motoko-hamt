@@ -1,5 +1,6 @@
 import Iter "mo:base/Iter";
 import Text "mo:base/Text";
+import Nat "mo:base/Nat";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Array "mo:base/Array";
@@ -215,7 +216,7 @@ module {
           let result = removeRec(n, shift + BITS_PER_LEVEL, hash);
           let #gathered(g) = result else return result;
           if (Nat64.bitcountNonZero(anchor.bitmap) == 1 and shift != 0) {
-            #gathered(g)
+            return result
           } else {
             anchor.nodes[ix] := #leaf(g.newNode);
             #success(g.removed)
@@ -255,6 +256,23 @@ module {
         };
       };
     };
+  };
+
+  // Exposed for testing/debugging
+  public func maxDepth<A>(hamt : Hamt<A>) : Nat {
+    let depth = func<A>(node : Node<A>) : Nat {
+      switch node {
+        case (#leaf(_)) 0;
+        case (#bitMapped(n)) {
+          var d = 0;
+          for (child in n.nodes.values()) {
+            d := Nat.max(d, depth(child));
+          };
+          d + 1
+        };
+      }
+    };
+    depth(#bitMapped(hamt.root))
   };
 
   func insertVarArray<A>(as : [var A], a : A, ix : Nat) : [var A] {

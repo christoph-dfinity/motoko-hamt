@@ -60,19 +60,19 @@ module {
     bench.description("Adds, retrieves, and deletes n map entries");
 
     bench.rows([
-      "OrderedMap",
+      // "OrderedMap",
 
+      // "HAMT - Sip",
+      // "HAMT - Fnv",
+
+      // "Hashtable - Sip",
+      // "Hashtable - Fnv",
+
+      // "pure/Map",
       "pure/HAMT - Sip",
-      "HAMT - Sip",
-      "HAMT - Fnv",
 
-      "Hashtable - Sip",
-      "Hashtable - Fnv",
-
-      "pure/Map",
-
-      "oldbase/HashMap - Sip",
-      "oldbase/Trie - Sip",
+      // "oldbase/HashMap - Sip",
+      // "oldbase/Trie - Sip",
     ]);
     bench.cols([
       "0",
@@ -143,6 +143,21 @@ module {
 
         for (i in Iter.range(n + 1, n + n)) {
           map := PureMap.remove(map, Blob.compare, blob(i));
+        };
+      };
+      if (row == "pure/HAMT - Sip") {
+        var map = PureHamt.new<Nat>();
+        for (i in Iter.range(1, n)) {
+          map := PureHamt.add(map, sip64Blob(blob(i)), i);
+        };
+        for (i in Iter.range(1, n)) {
+          ignore PureHamt.get(map, sip64Blob(blob(i)));
+          ignore PureHamt.get(map, sip64Blob(blobWrong(i)));
+        };
+
+        for (i in Iter.range(n + 1, n + n)) {
+          let (newMap, _) = PureHamt.remove(map, sip64Blob(blob(i)));
+          map := newMap;
         };
       };
 

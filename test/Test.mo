@@ -9,6 +9,7 @@ import Sip13 "mo:siphash/Sip13";
 import Hasher "mo:siphash/Hasher";
 
 import Hamt "../src/Hamt";
+import PureHamt "../src/pure/Hamt";
 
 func natHash(n : Nat) : Nat64 {
   Sip13.withHasherUnkeyed(func h = Hasher.nat(h, n))
@@ -74,7 +75,7 @@ let suite = S.suite("HAMT", [
   }, M.equals(T.nat(5050))),
   S.test("Test compaction on remove", do {
     let hamt = Hamt.new<Nat>();
-    ignore Hamt.add(hamt, (0 : Nat64), 0);
+    ignore Hamt.add(hamt, 0 : Nat64, 0);
     ignore Hamt.add(hamt, (64 * 64 : Nat64), 64 * 64);
     let nestedDepth = Hamt.maxDepth(hamt);
     ignore Hamt.remove(hamt, (0 : Nat64));
@@ -83,4 +84,17 @@ let suite = S.suite("HAMT", [
   }, M.equals(T.tuple2(T.natTestable, T.natTestable, (3, 1)))),
 ]);
 
+let suitePure = S.suite("pure/HAMT", [
+  S.test("Test compaction on remove", do {
+    var hamt : PureHamt.Hamt<Nat> = PureHamt.new();
+    hamt := PureHamt.add(hamt, 0 : Nat64, 0);
+    hamt := PureHamt.add(hamt, 64 * 64 : Nat64, 64 * 64);
+    let nestedDepth = PureHamt.maxDepth(hamt);
+    let (newHamt, _) = PureHamt.remove(hamt, (0 : Nat64));
+    let depthAfterRemoval = PureHamt.maxDepth(newHamt);
+    (nestedDepth, depthAfterRemoval)
+  }, M.equals(T.tuple2(T.natTestable, T.natTestable, (3, 1))))
+]);
+
 S.run(suite);
+S.run(suitePure);

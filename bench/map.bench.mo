@@ -3,6 +3,7 @@ import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";
 import Fnv "../src/Fnv";
 import Hamt "../src/Map";
+import PureHamt "../src/pure/Hamt";
 import Hasher "mo:siphash/Hasher";
 import Hashtable "mo:hashmap/Map";
 import Iter "mo:base/Iter";
@@ -61,6 +62,7 @@ module {
     bench.rows([
       "OrderedMap",
 
+      "pure/HAMT - Sip",
       "HAMT - Sip",
       "HAMT - Fnv",
 

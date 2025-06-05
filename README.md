@@ -26,6 +26,7 @@ Adds, retrieves, and deletes n map entries
 | Hashtable - Fnv       | 3_417 |   928_537 | 157_874_352 | 10_154_344_991 |
 | pure/Map              | 2_879 | 1_311_710 | 268_447_058 | 19_906_417_215 |
 | pure/HAMT - Sip       | 3_318 | 1_855_247 | 344_518_986 | 23_977_535_736 |
+| pure/HAMT - Fnv       | 3_764 | 1_376_723 | 289_582_813 | 20_767_374_821 |
 | oldbase/HashMap - Sip | 4_021 | 4_484_291 | 578_411_341 | 31_523_278_772 |
 | oldbase/Trie - Sip    | 3_366 | 2_582_997 | 434_985_708 | 29_341_522_939 |
 
@@ -41,6 +42,7 @@ Adds, retrieves, and deletes n map entries
 | Hashtable - Fnv       | 540 B |  13.66 KiB |  2.36 MiB |   157.9 MiB |
 | pure/Map              | 528 B | 118.27 KiB | 21.76 MiB |    1.56 GiB |
 | pure/HAMT - Sip       | 528 B |  95.29 KiB | 14.85 MiB | 1014.15 MiB |
+| pure/HAMT - Fnv       | 528 B |  56.02 KiB |    11 MiB |  780.83 MiB |
 | oldbase/HashMap - Sip | 864 B |  223.3 KiB | 24.72 MiB |    1.26 GiB |
 | oldbase/Trie - Sip    | 544 B | 143.09 KiB | 21.79 MiB |    1.42 GiB |
 

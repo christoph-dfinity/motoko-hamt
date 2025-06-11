@@ -6,6 +6,7 @@ import Nat64 "mo:base/Nat64";
 import Array "mo:base/Array";
 import Char "mo:base/Char";
 import Debug "mo:base/Debug";
+import List "mo:base/List";
 
 module {
   public type Hash = Nat64;
@@ -262,6 +263,39 @@ module {
           };
         };
       };
+    };
+  };
+
+  // Copied verbatim from imperative module
+  type NodeCursor<A> = { node : Anchor<A>; var index : Nat };
+  type IterState<A> = {
+    var stack : List.List<NodeCursor<A>>;
+  };
+
+  public func iter<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
+    let state : IterState<A> = { var stack = List.make({ node = hamt.root; var index = 0 }) };
+    object {
+      public func next() : ?(Hash, A) {
+        label outer loop {
+          let ?(current, tail) = state.stack else { return null };
+          if (current.node.nodes.size() <= current.index) {
+            state.stack := tail;
+            continue outer;
+          };
+          switch (current.node.nodes[current.index]) {
+            case (#leaf(l)) {
+              current.index += 1;
+              return ?l
+            };
+            case (#bitMapped(bm)) {
+              current.index += 1;
+              state.stack := ?({ node = bm; var index = 0 }, state.stack);
+              continue outer;
+            }
+          };
+        };
+        null
+      }
     };
   };
 

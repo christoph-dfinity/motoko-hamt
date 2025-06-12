@@ -88,7 +88,7 @@ module {
       if (row == "HAMT - Sip") {
         let hamt = Hamt.new<Blob, Nat>();
         for (i in Iter.range(1, n)) {
-          ignore Hamt.add(sip64Blob, Blob.equal, hamt, blob(i), i);
+          Hamt.add(sip64Blob, Blob.equal, hamt, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {
@@ -104,7 +104,7 @@ module {
       if (row == "HAMT - Fnv") {
         let hamt = Hamt.new<Blob, Nat>();
         for (i in Iter.range(1, n)) {
-          ignore Hamt.add(fnv64Blob, Blob.equal, hamt, blob(i), i);
+          Hamt.add(fnv64Blob, Blob.equal, hamt, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {

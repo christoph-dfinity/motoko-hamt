@@ -101,7 +101,11 @@ module {
     ?v
   };
 
-  public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
+  public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) {
+    ignore replace(hamt, hash, value);
+  };
+
+  public func replace<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
     let (shift, anchor, result) = getWithAnchor(hamt.root, 0, hash);
     switch (result) {
       case (#success(prev)) {

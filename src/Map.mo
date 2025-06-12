@@ -31,7 +31,11 @@ module {
     Hamt.new()
   };
 
-  public func add<K, V>(hash : K -> Hamt.Hash, eq : (K, K) -> Bool, map : Map<K, V>, key : K, value : V) : ?V {
+  public func add<K, V>(hash : K -> Hamt.Hash, eq : (K, K) -> Bool, map : Map<K, V>, key : K, value : V) {
+    ignore replace(hash, eq, map, key, value);
+  };
+
+  public func replace<K, V>(hash : K -> Hamt.Hash, eq : (K, K) -> Bool, map : Map<K, V>, key : K, value : V) : ?V {
     let hashed = hash(key);
     let bucket = Hamt.get(map, hashed);
     switch (bucket) {

@@ -81,12 +81,20 @@ module {
 
   public type Hamt<A> = {
     var root : Bitmapped<A>;
+    var size : Nat;
   };
 
-  public func new<A>() : Hamt<A> = { var root = {
-    var bitmap = 0;
-    var nodes = [var];
-  }};
+  public func new<A>() : Hamt<A> = {
+    var root = {
+      var bitmap = 0;
+      var nodes = [var];
+    };
+    var size = 0;
+  };
+
+  public func size<A>(hamt : Hamt<A>) : Nat {
+    hamt.size;
+  };
 
   public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
     let (_, _, #success(_, v)) = getWithAnchor(hamt.root, 0, hash) else return null;
@@ -107,12 +115,14 @@ module {
         let ix = index(anchor.bitmap, pos);
         let newNodes = insertVarArray(anchor.nodes, #leaf((hash, value)), ix);
         anchor.nodes := newNodes;
+        hamt.size += 1;
         null;
       };
       case (#conflict(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
         let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, value);
         anchor.nodes[ix] := #bitMapped(newNode);
+        hamt.size += 1;
         null;
       };
     };
@@ -121,7 +131,10 @@ module {
   public func remove<A>(hamt : Hamt<A>, hash : Hash) : ?A {
     switch (removeRec(hamt.root, 0, hash)) {
       case (#notFound) null;
-      case (#success(l)) ?l.1;
+      case (#success(l)) {
+        hamt.size -= 1;
+        ?l.1;
+      };
       case (#gathered(_)) Debug.trap("Must never gather the root node");
     };
   };

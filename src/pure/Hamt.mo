@@ -7,6 +7,7 @@ import Array "mo:base/Array";
 import Char "mo:base/Char";
 import Debug "mo:base/Debug";
 import List "mo:base/List";
+import Option "mo:base/Option";
 
 module {
   public type Hash = Nat64;
@@ -81,12 +82,17 @@ module {
 
   public type Hamt<A> = {
     root : Bitmapped<A>;
+    size : Nat;
   };
 
-  public func new<A>() : Hamt<A> = { root = {
-    bitmap = 0;
-    nodes = [];
-  }};
+  public func new<A>() : Hamt<A> = {
+    root = { bitmap = 0; nodes = []; };
+    size = 0;
+  };
+
+  public func size<A>(hamt : Hamt<A>) : Nat {
+    hamt.size;
+  };
 
   public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
     let (_, _, #success(_, v)) = getWithAnchor(hamt.root, 0, hash) else return null;
@@ -100,7 +106,8 @@ module {
 
   public func replace<A>(hamt : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
     let (newRoot, replaced) = addMapped(hamt.root, 0, hash, value);
-    ({ root = newRoot }, replaced);
+    let newSize = if (Option.isSome(replaced)) { hamt.size } else { hamt.size + 1 };
+    ({ root = newRoot; size = newSize }, replaced);
   };
 
   public func addMapped<A>(anchor : Bitmapped<A>, shift : Nat, hash : Hash, value : A) : (Bitmapped<A>, ?A) {
@@ -131,7 +138,7 @@ module {
   public func remove<A>(hamt : Hamt<A>, hash : Hash) : (Hamt<A>, ?A) {
     switch (removeRec(hamt.root, 0, hash)) {
       case (#notFound) (hamt, null);
-      case (#success(l)) ({ root = l.newNode }, ?l.removed.1);
+      case (#success(l)) ({ root = l.newNode; size = hamt.size - 1 }, ?l.removed.1);
       case (#gathered(_)) Debug.trap("Must never gather the root node");
     };
   };

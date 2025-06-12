@@ -301,7 +301,7 @@ module {
 
   // Exposed for testing/debugging
   public func maxDepth<A>(hamt : Hamt<A>) : Nat {
-    let depth = func<A>(node : Node<A>) : Nat {
+    func depth<A>(node : Node<A>) : Nat {
       switch node {
         case (#leaf(_)) 0;
         case (#bitMapped(n)) {

@@ -30,6 +30,10 @@ module {
       Fnv.hash64Blob(b)
     };
 
+    func hashBlobFnv64(_hasher : Hasher.Hasher, b : Blob) : Nat64 {
+      Fnv.hash64Blob(b)
+    };
+
     func sip32Blob(b : Blob) : Nat32 {
       hasher.reset();
       hasher.writeBlob(b);
@@ -38,6 +42,12 @@ module {
     };
 
     func sip64Blob(b : Blob) : Nat64 {
+      hasher.reset();
+      hasher.writeBlob(b);
+      hasher.finish();
+    };
+
+    func hashBlob64(hasher : Hasher.Hasher, b : Blob) : Nat64 {
       hasher.reset();
       hasher.writeBlob(b);
       hasher.finish();
@@ -86,34 +96,36 @@ module {
       let ?n = Nat.fromText(col);
 
       if (row == "HAMT - Sip") {
-        let hamt = Hamt.new<Blob, Nat>();
+        let map = Hamt.newUnseeded<Blob, Nat>();
+        let blobMap = Hamt.Operations<Blob>(map, hashBlob64, Blob.equal);
         for (i in Iter.range(1, n)) {
-          Hamt.add(sip64Blob, Blob.equal, hamt, blob(i), i);
+          blobMap.add(map, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {
-          ignore Hamt.get(sip64Blob, Blob.equal, hamt, blob(i));
-          ignore Hamt.get(sip64Blob, Blob.equal, hamt, blobWrong(i));
+          ignore blobMap.get(map, blob(i));
+          ignore blobMap.get(map, blobWrong(i));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          ignore Hamt.remove(sip64Blob, Blob.equal, hamt, blob(i));
+          ignore blobMap.remove(map, blob(i));
         };
       };
 
       if (row == "HAMT - Fnv") {
-        let hamt = Hamt.new<Blob, Nat>();
+        let map = Hamt.newUnseeded<Blob, Nat>();
+        let blobMap = Hamt.Operations<Blob>(map, hashBlobFnv64, Blob.equal);
         for (i in Iter.range(1, n)) {
-          Hamt.add(fnv64Blob, Blob.equal, hamt, blob(i), i);
+          blobMap.add(map, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {
-          ignore Hamt.get(fnv64Blob, Blob.equal, hamt, blob(i));
-          ignore Hamt.get(fnv64Blob, Blob.equal, hamt, blobWrong(i));
+          ignore blobMap.get(map, blob(i));
+          ignore blobMap.get(map, blobWrong(i));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          ignore Hamt.remove(fnv64Blob, Blob.equal, hamt, blob(i));
+          ignore blobMap.remove(map, blob(i));
         };
       };
 
@@ -128,7 +140,7 @@ module {
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          ignore Map.remove(map, Blob.compare, blob(i));
+          Map.remove(map, Blob.compare, blob(i));
         };
       };
 
@@ -210,7 +222,7 @@ module {
       if (row == "oldbase/HashMap - Sip") {
         let map = OldHashMap.HashMap<Blob, Nat>(0, Blob.equal, sip32Blob);
         for (i in Iter.range(1, n)) {
-          ignore map.put(blob(i), i);
+          map.put(blob(i), i);
         };
         for (i in Iter.range(1, n)) {
           ignore map.get(blob(i));

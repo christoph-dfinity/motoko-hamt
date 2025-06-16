@@ -92,8 +92,26 @@ module {
     var size = 0;
   };
 
-  public func size<A>(hamt : Hamt<A>) : Nat {
-    hamt.size;
+  public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
+    let hamt : Hamt<A> = new();
+    add(hamt, hash, value);
+    hamt
+  };
+
+  public func fromIter<A>(iter : Iter.Iter<(Hash, A)>) : Hamt<A> {
+    let hamt : Hamt<A> = new();
+    for ((h, v) in iter) {
+      add(hamt, h, v);
+    };
+    hamt
+  };
+
+  public func clear<A>(hamt : Hamt<A>) {
+    hamt.root := {
+      var bitmap = 0;
+      var nodes = [var];
+    };
+    hamt.size := 0
   };
 
   public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
@@ -102,34 +120,40 @@ module {
   };
 
   public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) {
-    ignore replace(hamt, hash, value);
+    ignore swap(hamt, hash, value);
   };
 
-  public func replace<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
+  public func swap<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
+    var previous : ?A = null;
+    upsert(hamt, hash, func (prev : ?A) : A {
+      previous := prev;
+      value
+    });
+    previous
+  };
+
+  public func upsert<A>(hamt : Hamt<A>, hash : Hash, update : ?A -> A) {
     let (shift, anchor, result) = getWithAnchor(hamt.root, 0, hash);
     switch (result) {
       case (#success(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
-        anchor.nodes[ix] := #leaf(hash, value);
-        ?prev.1;
+        anchor.nodes[ix] := #leaf(hash, update(?prev.1));
       };
       case (#missing) {
         let pos = bitpos(hash, shift);
         anchor.bitmap |= pos;
         let ix = index(anchor.bitmap, pos);
-        let newNodes = insertVarArray(anchor.nodes, #leaf((hash, value)), ix);
+        let newNodes = insertVarArray(anchor.nodes, #leaf((hash, update(null))), ix);
         anchor.nodes := newNodes;
         hamt.size += 1;
-        null;
       };
       case (#conflict(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
-        let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, value);
+        let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, update(null));
         anchor.nodes[ix] := #bitMapped(newNode);
         hamt.size += 1;
-        null;
       };
-    };
+    }
   };
 
   public func remove<A>(hamt : Hamt<A>, hash : Hash) : ?A {
@@ -282,7 +306,7 @@ module {
   };
 
   // The underlying Hamt must not by modified while iterating
-  public func iter<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
+  public func entries<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
     let state : IterState<A> = { var stack = List.make({ node = hamt.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {

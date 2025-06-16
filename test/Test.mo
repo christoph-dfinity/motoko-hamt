@@ -27,7 +27,7 @@ let suite = S.suite("HAMT", [
   S.test("add overlapping hashes", do {
     let hamt = Hamt.new<Nat>();
     Hamt.add(hamt, (0 : Nat64), 0);
-    Hamt.replace(hamt, (0 : Nat64), 1);
+    Hamt.swap(hamt, (0 : Nat64), 1);
   }, M.equals(T.optional(T.natTestable, ?0))),
   S.test("remove", do {
     let hamt = Hamt.new<Nat>();

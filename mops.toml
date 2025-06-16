@@ -1,11 +1,11 @@
 [dependencies]
-base = "0.14.10"
+base = "0.14.11"
 
 [dev-dependencies]
 bench = "1.0.0"
-matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
-hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map/commit/94d509f97d70ac03828eee3064d939a3259eab78#94d509f97d70ac03828eee3064d939a3259eab78"
-siphash = "https://github.com/christoph-dfinity/motoko-siphash/commit/75513ee367edebae126c8c56e53e8145c493593c#75513ee367edebae126c8c56e53e8145c493593c"
+matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd@3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
+hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828eee3064d939a3259eab78@94d509f97d70ac03828eee3064d939a3259eab78"
+siphash = "https://github.com/christoph-dfinity/motoko-siphash#56c62a6a290f9838afcdab5c4bb3295e44ec94f6@56c62a6a290f9838afcdab5c4bb3295e44ec94f6"
 
 [package]
 name = "hamt"
@@ -16,4 +16,4 @@ keywords = [ ]
 license = "Apache-2.0"
 
 [toolchain]
-moc = "0.14.10"
+moc = "0.14.11"

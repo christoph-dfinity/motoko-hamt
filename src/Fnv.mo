@@ -1,3 +1,4 @@
+import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
@@ -41,7 +42,7 @@ module {
     let size = blob.size();
     var i = 0;
     while (i < size) {
-      hash ^= Nat64.fromNat32(Nat32.fromNat16(Nat16.fromNat8(blob[i])));
+      hash ^= Nat64.fromNat(Nat8.toNat(blob[i]));
       hash *%= fnv_prime;
       i += 1;
     };
@@ -53,51 +54,54 @@ module {
     var hash : Nat64 = 14695981039346656037;
 
     public func writeNat8(x : Nat8) {
-      hash ^= Nat64.fromNat32(Nat32.fromNat16(Nat16.fromNat8(x)));
-      hash *%= fnv_prime;
+      var _hash : Nat64 = hash;
+      _hash ^= Nat64.fromNat(Nat8.toNat(x));
+      _hash *%= fnv_prime;
+      hash := _hash;
     };
 
     public func writeNat16(x : Nat16) {
+      let (b2, b1) = Nat16.explode(x);
       var _hash : Nat64 = hash;
-      _hash ^= Nat64.fromNat32(Nat32.fromNat16(x & 0xFF));
+      _hash ^= Nat64.fromNat(Nat8.toNat(b1));
       _hash *%= fnv_prime;
-      _hash ^= Nat64.fromNat32(Nat32.fromNat16((x >> 8) & 0xFF));
+      _hash ^= Nat64.fromNat(Nat8.toNat(b2));
       _hash *%= fnv_prime;
       hash := _hash;
     };
 
     public func writeNat32(x : Nat32) {
+      let (b4, b3, b2, b1) = Nat32.explode(x);
       var _hash : Nat64 = hash;
-      _hash ^= Nat64.fromNat32(x & 0xFF);
+      _hash ^= Nat64.fromNat(Nat8.toNat(b1));
       _hash *%= fnv_prime;
-      _hash ^= Nat64.fromNat32((x >> 8) & 0xFF);
+      _hash ^= Nat64.fromNat(Nat8.toNat(b2));
       _hash *%= fnv_prime;
-      _hash ^= Nat64.fromNat32((x >> 16) & 0xFF);
+      _hash ^= Nat64.fromNat(Nat8.toNat(b3));
       _hash *%= fnv_prime;
-      _hash ^= Nat64.fromNat32((x >> 24) & 0xFF);
+      _hash ^= Nat64.fromNat(Nat8.toNat(b4));
       _hash *%= fnv_prime;
       hash := _hash;
     };
 
     public func writeNat64(x : Nat64) {
+      let (b8, b7, b6, b5, b4, b3, b2, b1) = Nat64.explode(x);
       var _hash : Nat64 = hash;
-      _hash ^= x & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b1));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 8) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b2));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 16) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b3));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 24) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b4));
       _hash *%= fnv_prime;
-      _hash ^= x & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b5));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 32) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b6));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 40) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b7));
       _hash *%= fnv_prime;
-      _hash ^= (x >> 48) & 0xFF;
-      _hash *%= fnv_prime;
-      _hash ^= (x >> 56) & 0xFF;
+      _hash ^= Nat64.fromNat(Nat8.toNat(b8));
       _hash *%= fnv_prime;
       hash := _hash;
     };
@@ -107,7 +111,7 @@ module {
       var i = 0;
       var _hash : Nat64 = hash;
       while (i < size) {
-        _hash ^= Nat64.fromNat32(Nat32.fromNat16(Nat16.fromNat8(bytes[i])));
+        _hash ^= Nat64.fromNat(Nat8.toNat(bytes[i]));
         _hash *%= fnv_prime;
         i += 1;
       };
@@ -119,7 +123,7 @@ module {
       var i = 0;
       var _hash : Nat64 = hash;
       while (i < size) {
-        _hash ^= Nat64.fromNat32(Nat32.fromNat16(Nat16.fromNat8(bytes[i])));
+        _hash ^= Nat64.fromNat(Nat8.toNat(bytes[i]));
         _hash *%= fnv_prime;
         i += 1;
       };

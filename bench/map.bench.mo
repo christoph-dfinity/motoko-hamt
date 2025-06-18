@@ -73,7 +73,7 @@ module {
       "OrderedMap",
 
       "HAMT - Sip",
-      // "HAMT - Fnv",
+      "HAMT - Fnv",
 
       // "Hashtable - Sip",
       // "Hashtable - Fnv",
@@ -89,7 +89,7 @@ module {
       "0",
       "100",
       "10000",
-      "100000",
+      "500000",
     ]);
 
     bench.runner(func(row, col) {

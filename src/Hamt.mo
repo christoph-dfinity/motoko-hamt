@@ -333,6 +333,36 @@ module {
     };
   };
 
+  public func equals<A>(left : Hamt<A>, right : Hamt<A>, equals : (A, A) -> Bool) : Bool {
+    if (left.size != right.size) { return false };
+    equalsRec(left.root, right.root, equals)
+  };
+
+  func equalsRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equals : (A, A) -> Bool) : Bool {
+    if (left.bitmap != right.bitmap) { return false };
+    var i : Nat = 0;
+    let size : Nat = left.nodes.size();
+    while (i < size) {
+      switch (left.nodes[i], right.nodes[i]) {
+        case (#leaf(lh, lv), #leaf(rh, rv)) {
+          if (lh != rh or not equals(lv, rv)) {
+            return false
+          };
+        };
+        case (#bitMapped(l), #bitMapped(r)) {
+          if (not equalsRec(l, r, equals)) {
+            return false
+          }
+        };
+        case _ {
+          return false
+        };
+      };
+      i += 1;
+    };
+    true
+  };
+
   // Exposed for testing/debugging
   public func maxDepth<A>(hamt : Hamt<A>) : Nat {
     let depth = func<A>(node : Node<A>) : Nat {

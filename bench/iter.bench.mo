@@ -1,6 +1,7 @@
 import Array "mo:base/Array";
 import Bench "mo:bench";
 import Blob "mo:base/Blob";
+import Fnv "../src/Fnv";
 import Hamt "../src/Map";
 import Hasher "mo:siphash/Hasher";
 import Iter "mo:base/Iter";
@@ -29,7 +30,8 @@ module {
 
     bench.rows([
       "OrderedMap",
-      "HAMT",
+      "HAMT - Sip",
+      "HAMT - Fnv",
     ]);
     bench.cols([
       "100000",
@@ -39,30 +41,41 @@ module {
     let N : Nat = 100_000;
     let keys: [Blob] = Array.tabulate(N + 1, blob);
 
-    let hamt = Hamt.new<Blob, Nat>();
-    let blobMap = Hamt.Operations<Blob>(Sip13.SipHasher13(0, 0), hashBlob64, Blob.equal);
-    for (i in Iter.range(1, N)) {
-      blobMap.add(hamt, keys[i], i);
-    };
-
     let orderedMap = Map.empty<Blob, Nat>();
     for (i in Iter.range(1, N)) {
       Map.add(orderedMap, Blob.compare, keys[i], i);
     };
 
-    bench.runner(func(row, col) {
-      let ?n = Nat.fromText(col);
+    let fnvMap = Hamt.Operations<Blob>(Fnv.FnvHasher(), hashBlob64, Blob.equal);
+    let fnvHamt : Hamt.Map<Blob, Nat> = fnvMap.new();
+    for (i in Iter.range(1, N)) {
+      ignore fnvMap.insert(fnvHamt, keys[i], i);
+    };
 
-      if (row == "HAMT") {
+    let sipMap = Hamt.Operations<Blob>(Sip13.SipHasher13(0, 0), hashBlob64, Blob.equal);
+    let sipHamt : Hamt.Map<Blob, Nat> = sipMap.new();
+    for (i in Iter.range(1, N)) {
+      ignore sipMap.insert(sipHamt, keys[i], i);
+    };
+
+    bench.runner(func(row, _) {
+      if (row == "OrderedMap") {
         var count : Nat = 0;
-        for ((k, v) in blobMap.entries(hamt)) {
+        for ((k, v) in Map.entries(orderedMap)) {
           count += 1;
         };
         assert count == N;
       };
-      if (row == "OrderedMap") {
+      if (row == "HAMT - Sip") {
         var count : Nat = 0;
-        for ((k, v) in Map.entries(orderedMap)) {
+        for ((k, v) in sipMap.entries(sipHamt)) {
+          count += 1;
+        };
+        assert count == N;
+      };
+      if (row == "HAMT - Fnv") {
+        var count : Nat = 0;
+        for ((k, v) in fnvMap.entries(fnvHamt)) {
           count += 1;
         };
         assert count == N;

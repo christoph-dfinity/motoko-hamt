@@ -72,15 +72,15 @@ module {
     bench.rows([
       "OrderedMap",
 
-      // "HAMT - Sip",
-      "HAMT - Fnv",
+      "HAMT - Sip",
+      // "HAMT - Fnv",
 
       // "Hashtable - Sip",
       // "Hashtable - Fnv",
 
       // "pure/Map",
-      // "pure/HAMT - Sip",
-      "pure/HAMT - Fnv",
+      "pure/HAMT - Sip",
+      // "pure/HAMT - Fnv",
 
       // "oldbase/HashMap - Sip",
       // "oldbase/Trie - Sip",
@@ -96,10 +96,10 @@ module {
       let ?n = Nat.fromText(col);
 
       if (row == "HAMT - Sip") {
-        let map = Hamt.new<Blob, Nat>();
         let blobMap = Hamt.Operations<Blob>(sipHasher, hashBlob64, Blob.equal);
+        let map : Hamt.Map<Blob, Nat> = blobMap.new();
         for (i in Iter.range(1, n)) {
-          blobMap.add(map, blob(i), i);
+          ignore blobMap.insert(map, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {
@@ -113,10 +113,10 @@ module {
       };
 
       if (row == "HAMT - Fnv") {
-        let map = Hamt.new<Blob, Nat>();
         let blobMap = Hamt.Operations<Blob>(fnvHasher, hashBlobFnv64, Blob.equal);
+        let map : Hamt.Map<Blob, Nat> = blobMap.new();
         for (i in Iter.range(1, n)) {
-          blobMap.add(map, blob(i), i);
+          ignore blobMap.insert(map, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {

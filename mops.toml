@@ -5,7 +5,7 @@ base = "0.14.11"
 bench = "1.0.0"
 matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd@3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
 hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828eee3064d939a3259eab78@94d509f97d70ac03828eee3064d939a3259eab78"
-siphash = "https://github.com/christoph-dfinity/motoko-siphash#56c62a6a290f9838afcdab5c4bb3295e44ec94f6@56c62a6a290f9838afcdab5c4bb3295e44ec94f6"
+siphash = "https://github.com/christoph-dfinity/motoko-siphash#444d80e2d750d25532dcb7cee7be2cac6649f6ef@444d80e2d750d25532dcb7cee7be2cac6649f6ef"
 
 [package]
 name = "hamt"

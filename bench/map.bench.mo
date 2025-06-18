@@ -18,9 +18,9 @@ import Text "mo:base/Text";
 import Trie "mo:base/Trie";
 
 module {
-
   public func init() : Bench.Bench {
-    let hasher = Sip13.SipHasher13(13, 37);
+    let sipHasher = Sip13.SipHasher13(0, 0);
+    let fnvHasher = Fnv.FnvHasher();
 
     func fnv32Blob(b : Blob) : Nat32 {
       Fnv.hash32Blob(b)
@@ -35,22 +35,22 @@ module {
     };
 
     func sip32Blob(b : Blob) : Nat32 {
-      hasher.reset();
-      hasher.writeBlob(b);
-      let hash = hasher.finish();
+      sipHasher.reset();
+      sipHasher.writeBlob(b);
+      let hash = sipHasher.finish();
       Nat64.toNat32(hash >> 32)
     };
 
     func sip64Blob(b : Blob) : Nat64 {
-      hasher.reset();
-      hasher.writeBlob(b);
-      hasher.finish();
+      sipHasher.reset();
+      sipHasher.writeBlob(b);
+      sipHasher.finish();
     };
 
     func hashBlob64(hasher : Hasher.Hasher, b : Blob) : Nat64 {
-      hasher.reset();
-      hasher.writeBlob(b);
-      hasher.finish();
+      sipHasher.reset();
+      sipHasher.writeBlob(b);
+      sipHasher.finish();
     };
 
     func blob(n : Nat) : Blob {
@@ -72,32 +72,32 @@ module {
     bench.rows([
       "OrderedMap",
 
-      "HAMT - Sip",
+      // "HAMT - Sip",
       "HAMT - Fnv",
 
-      "Hashtable - Sip",
-      "Hashtable - Fnv",
+      // "Hashtable - Sip",
+      // "Hashtable - Fnv",
 
-      "pure/Map",
-      "pure/HAMT - Sip",
+      // "pure/Map",
+      // "pure/HAMT - Sip",
       "pure/HAMT - Fnv",
 
-      "oldbase/HashMap - Sip",
-      "oldbase/Trie - Sip",
+      // "oldbase/HashMap - Sip",
+      // "oldbase/Trie - Sip",
     ]);
     bench.cols([
       "0",
       "100",
       "10000",
-      "500000",
+      "100000",
     ]);
 
     bench.runner(func(row, col) {
       let ?n = Nat.fromText(col);
 
       if (row == "HAMT - Sip") {
-        let map = Hamt.newUnseeded<Blob, Nat>();
-        let blobMap = Hamt.Operations<Blob>(map, hashBlob64, Blob.equal);
+        let map = Hamt.new<Blob, Nat>();
+        let blobMap = Hamt.Operations<Blob>(sipHasher, hashBlob64, Blob.equal);
         for (i in Iter.range(1, n)) {
           blobMap.add(map, blob(i), i);
         };
@@ -113,8 +113,8 @@ module {
       };
 
       if (row == "HAMT - Fnv") {
-        let map = Hamt.newUnseeded<Blob, Nat>();
-        let blobMap = Hamt.Operations<Blob>(map, hashBlobFnv64, Blob.equal);
+        let map = Hamt.new<Blob, Nat>();
+        let blobMap = Hamt.Operations<Blob>(fnvHasher, hashBlobFnv64, Blob.equal);
         for (i in Iter.range(1, n)) {
           blobMap.add(map, blob(i), i);
         };

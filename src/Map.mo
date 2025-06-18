@@ -1,27 +1,20 @@
 import Hamt "Hamt";
 import AL "mo:base/AssocList";
 import List "mo:base/List";
-import Sip "mo:siphash/Sip13";
+import Iter "mo:base/Iter";
 import Hasher "mo:siphash/Hasher";
 
 module {
-
+  /// A HashMap
   public type Map<K, V> = {
     hamt : Hamt.Hamt<Bucket.T<K, V>>;
-    seed : (Nat64, Nat64);
   };
 
-  public func newUnseeded<K, V>() : Map<K, V> {
-    { hamt = Hamt.new(); seed = (0, 0) };
+  public func new<K, V>() : Map<K, V> {
+    { hamt = Hamt.new() };
   };
 
-  public func newSeeded<K, V>(seed : (Nat64, Nat64)) : Map<K, V> {
-    { hamt = Hamt.new(); seed };
-  };
-
-  public class Operations<K>(map : { seed : (Nat64, Nat64) }, hash : (Hasher.Hasher, K) -> Hamt.Hash, eq : (K, K) -> Bool) {
-    let hasher : Hasher.Hasher = Sip.SipHasher13(map.seed);
-
+  public class Operations<K>(hasher : Hasher.Hasher, hash : (Hasher.Hasher, K) -> Hamt.Hash, eq : (K, K) -> Bool) {
     public func add<V>(map : Map<K, V>, key : K, value : V) {
       ignore swap(map, key, value);
     };
@@ -54,10 +47,37 @@ module {
       removed
     };
 
+    public func delete<V>(map : Map<K, V>, key : K) {
+      ignore remove(map, key);
+    };
+
     public func get<V>(map : Map<K, V>, key : K) : ?V {
       let hashed = hash(hasher, key);
       let ?bucket = Hamt.get(map.hamt, hashed) else return null;
       Bucket.get(bucket, eq, key)
+    };
+
+    public func entries<V>(map : Map<K, V>) : Iter.Iter<(K, V)> {
+      let inner = Hamt.entries(map.hamt);
+      let ?(_, initialBucket) = inner.next() else {
+        return object { public func next() : ?(K, V) { return null } }
+      };
+      var currentBucket : Iter.Iter<(K, V)> = List.toIter(initialBucket.items);
+      object {
+        public func next() : ?(K, V) {
+          let nextEntry = currentBucket.next();
+          switch (nextEntry) {
+            case null {
+              let ?(_, nextBucket) = inner.next() else { return null };
+              currentBucket := List.toIter(nextBucket.items);
+              currentBucket.next();
+            };
+            case _ {
+              nextEntry
+            };
+          };
+        };
+      };
     };
   };
 

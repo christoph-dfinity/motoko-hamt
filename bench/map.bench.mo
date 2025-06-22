@@ -3,6 +3,7 @@ import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";
 import Fnv "../src/Fnv";
 import Hamt "../src/Map";
+import Ops "../src/Operations";
 import PureHamt "../src/pure/Hamt";
 import Hasher "mo:siphash/Hasher";
 import Hashtable "mo:hashmap/Map";
@@ -30,10 +31,6 @@ module {
       Fnv.hash64Blob(b)
     };
 
-    func hashBlobFnv64(_hasher : Hasher.Hasher, b : Blob) : Nat64 {
-      Fnv.hash64Blob(b)
-    };
-
     func sip32Blob(b : Blob) : Nat32 {
       sipHasher.reset();
       sipHasher.writeBlob(b);
@@ -48,9 +45,9 @@ module {
     };
 
     func hashBlob64(hasher : Hasher.Hasher, b : Blob) : Nat64 {
-      sipHasher.reset();
-      sipHasher.writeBlob(b);
-      sipHasher.finish();
+      hasher.reset();
+      hasher.writeBlob(b);
+      hasher.finish();
     };
 
     func blob(n : Nat) : Blob {
@@ -96,7 +93,7 @@ module {
       let ?n = Nat.fromText(col);
 
       if (row == "HAMT - Sip") {
-        let blobMap = Hamt.Operations<Blob>(sipHasher, hashBlob64, Blob.equal);
+        let blobMap = Ops.Operations<Blob>(sipHasher, hashBlob64, Blob.equal);
         let map : Hamt.Map<Blob, Nat> = blobMap.new();
         for (i in Iter.range(1, n)) {
           ignore blobMap.insert(map, blob(i), i);
@@ -113,7 +110,7 @@ module {
       };
 
       if (row == "HAMT - Fnv") {
-        let blobMap = Hamt.Operations<Blob>(fnvHasher, hashBlobFnv64, Blob.equal);
+        let blobMap = Ops.Operations<Blob>(fnvHasher, hashBlob64, Blob.equal);
         let map : Hamt.Map<Blob, Nat> = blobMap.new();
         for (i in Iter.range(1, n)) {
           ignore blobMap.insert(map, blob(i), i);

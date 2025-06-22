@@ -2,6 +2,7 @@ import Array "mo:base/Array";
 import Bench "mo:bench";
 import Blob "mo:base/Blob";
 import Fnv "../src/Fnv";
+import Ops "../src/Operations";
 import Hamt "../src/Map";
 import Hasher "mo:siphash/Hasher";
 import Iter "mo:base/Iter";
@@ -51,13 +52,13 @@ module {
       Map.add(orderedMap, Blob.compare, keys[i], i);
     };
 
-    let fnvMap = Hamt.Operations<Blob>(Fnv.FnvHasher(), hashBlob64, Blob.equal);
+    let fnvMap = Ops.Operations<Blob>(Fnv.FnvHasher(), hashBlob64, Blob.equal);
     let fnvHamt : Hamt.Map<Blob, Nat> = fnvMap.new();
     for (i in Iter.range(1, N)) {
       ignore fnvMap.insert(fnvHamt, keys[i], i);
     };
 
-    let sipMap = Hamt.Operations<Blob>(Sip13.SipHasher13(0, 0), hashBlob64, Blob.equal);
+    let sipMap = Ops.Operations<Blob>(Sip13.SipHasher13(0, 0), hashBlob64, Blob.equal);
     let sipHamt : Hamt.Map<Blob, Nat> = sipMap.new();
     for (i in Iter.range(1, N)) {
       ignore sipMap.insert(sipHamt, keys[i], i);

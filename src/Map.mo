@@ -3,7 +3,6 @@ import AL "mo:base/AssocList";
 import List "mo:base/List";
 import Iter "mo:base/Iter";
 import Option "mo:base/Option";
-import Hasher "mo:siphash/Hasher";
 
 module {
   /// A HashMap
@@ -12,103 +11,103 @@ module {
     var size : Nat;
   };
 
-  public class Operations<K>(hasher : Hasher.Hasher, hash : (Hasher.Hasher, K) -> Hamt.Hash, eq : (K, K) -> Bool) {
+  /// Holds both a hash and equality function for the Map's key type
+  public type HashFn<K> = (hash : K -> Nat64, eq : (K, K) -> Bool);
 
-    public func new<V>() : Map<K, V> {
-      { hamt = Hamt.new(); var size = 0 };
+  public func new<K, V>() : Map<K, V> {
+    { hamt = Hamt.new(); var size = 0 };
+  };
+
+  public func singleton<K, V>(hashFn : HashFn<K>, key : K, value : V) : Map<K, V> {
+    let hashed = hashFn.0(key);
+    { hamt = Hamt.singleton(hashed, { var items = List.make((key, value)) }); var size = 1 };
+  };
+
+  public func fromIter<K, V>(hashFn : HashFn<K>, iter : Iter.Iter<(K, V)>) : Map<K, V> {
+    let map : Map<K, V> = new();
+    for ((k, v) in iter) {
+      ignore insert(hashFn, map, k, v);
     };
+    map
+  };
 
-    public func singleton<V>(key : K, value : V) : Map<K, V> {
-      let hashed = hash(hasher, key);
-      { hamt = Hamt.singleton(hashed, { var items = List.make((key, value)) }); var size = 1 };
+  public func insert<K, V>(hashFn : HashFn<K>, map : Map<K, V>, key : K, value : V) : ?V {
+    let hashed = hashFn.0(key);
+    var previous : ?V = null;
+    Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
+      switch (prev) {
+        case null {
+          { var items = List.make((key, value)) }
+        };
+        case (?bucket) {
+          let replaced = Bucket.add(bucket, hashFn.1, key, value);
+          previous := replaced;
+          bucket
+        };
+      }
+    });
+    if (Option.isNull(previous)) {
+      map.size += 1;
     };
+    previous
+  };
 
-    public func fromIter<V>(iter : Iter.Iter<(K, V)>) : Map<K, V> {
-      let map : Map<K, V> = new();
-      for ((k, v) in iter) {
-        ignore insert(map, k, v);
-      };
-      map
+  public func get<K, V>(hashFn : HashFn<K>, map : Map<K, V>, key : K) : ?V {
+    let hashed = hashFn.0(key);
+    let ?bucket = Hamt.get(map.hamt, hashed) else return null;
+    Bucket.get(bucket, hashFn.1, key)
+  };
+
+  public func remove<K, V>(hashFn : HashFn<K>, map : Map<K, V>, key : K) : ?V {
+    let hashed = hashFn.0(key);
+    let ?bucket = Hamt.remove(map.hamt, hashed) else return null;
+    let removed = Bucket.remove(bucket, hashFn.1, key);
+    if (not List.isNil(bucket.items)) {
+      Hamt.add(map.hamt, hashed, bucket)
     };
+    if (Option.isSome(removed)) {
+      map.size -= 1;
+    };
+    removed
+  };
 
-    public func insert<V>(map : Map<K, V>, key : K, value : V) : ?V {
-      let hashed = hash(hasher, key);
-      var previous : ?V = null;
-      Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
-        switch (prev) {
+  public func containsKey<K, V>(hashFn : HashFn<K>, map : Map<K, V>, key : K) : Bool {
+    get(hashFn, map, key) |> Option.isSome(_);
+  };
+
+  public func entries<K, V>(map : Map<K, V>) : Iter.Iter<(K, V)> {
+    let inner = Hamt.entries(map.hamt);
+    let ?(_, initialBucket) = inner.next() else {
+      return object { public func next() : ?(K, V) { return null } }
+    };
+    var currentBucket : Iter.Iter<(K, V)> = List.toIter(initialBucket.items);
+    object {
+      public func next() : ?(K, V) {
+        let nextEntry = currentBucket.next();
+        switch (nextEntry) {
           case null {
-            { var items = List.make((key, value)) }
+            let ?(_, nextBucket) = inner.next() else { return null };
+            currentBucket := List.toIter(nextBucket.items);
+            currentBucket.next();
           };
-          case (?bucket) {
-            let replaced = Bucket.add(bucket, eq, key, value);
-            previous := replaced;
-            bucket
-          };
-        }
-      });
-      if (Option.isNull(previous)) {
-        map.size += 1;
-      };
-      previous
-    };
-
-    public func get<V>(map : Map<K, V>, key : K) : ?V {
-      let hashed = hash(hasher, key);
-      let ?bucket = Hamt.get(map.hamt, hashed) else return null;
-      Bucket.get(bucket, eq, key)
-    };
-
-    public func remove<V>(map : Map<K, V>, key : K) : ?V {
-      let hashed = hash(hasher, key);
-      let ?bucket = Hamt.remove(map.hamt, hashed) else return null;
-      let removed = Bucket.remove(bucket, eq, key);
-      if (not List.isNil(bucket.items)) {
-        Hamt.add(map.hamt, hashed, bucket)
-      };
-      if (Option.isSome(removed)) {
-        map.size -= 1;
-      };
-      removed
-    };
-
-    public func containsKey<V>(map : Map<K, V>, key : K) : Bool {
-      get(map, key) |> Option.isSome(_);
-    };
-
-    public func entries<V>(map : Map<K, V>) : Iter.Iter<(K, V)> {
-      let inner = Hamt.entries(map.hamt);
-      let ?(_, initialBucket) = inner.next() else {
-        return object { public func next() : ?(K, V) { return null } }
-      };
-      var currentBucket : Iter.Iter<(K, V)> = List.toIter(initialBucket.items);
-      object {
-        public func next() : ?(K, V) {
-          let nextEntry = currentBucket.next();
-          switch (nextEntry) {
-            case null {
-              let ?(_, nextBucket) = inner.next() else { return null };
-              currentBucket := List.toIter(nextBucket.items);
-              currentBucket.next();
-            };
-            case _ {
-              nextEntry
-            };
+          case _ {
+            nextEntry
           };
         };
       };
     };
+  };
 
-    public func keys<V>(map : Map<K, V>) : Iter.Iter<K> {
-      Iter.map(entries(map), func (e : (K, V)) : K = e.0);
-    };
+  public func keys<K, V>(map : Map<K, V>) : Iter.Iter<K> {
+    Iter.map(entries(map), func (e : (K, V)) : K = e.0);
+  };
 
-    public func values<V>(map : Map<K, V>) : Iter.Iter<V> {
-      Iter.map(entries(map), func (e : (K, V)) : V = e.1);
-    };
+  public func values<K, V>(map : Map<K, V>) : Iter.Iter<V> {
+    Iter.map(entries(map), func (e : (K, V)) : V = e.1);
+  };
 
-    public func size<V>(map : Map<K, V>) : Nat {
-      map.size
-    };
+  public func size<K, V>(map : Map<K, V>) : Nat {
+    map.size
   };
 
   module Bucket {

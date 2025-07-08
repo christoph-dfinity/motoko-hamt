@@ -1,11 +1,8 @@
 import Bench "mo:bench";
 import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";
-import Fnv "../src/Fnv";
-import Hamt "../src/Map";
-import Ops "../src/Operations";
+import HashMap "../src/Map";
 import PureHamt "../src/pure/Hamt";
-import Hasher "mo:siphash/Hasher";
 import Hashtable "mo:hashmap/Map";
 import Iter "mo:base/Iter";
 import OldHashMap "mo:base/HashMap";
@@ -21,33 +18,9 @@ import Trie "mo:base/Trie";
 module {
   public func init() : Bench.Bench {
     let sipHasher = Sip13.SipHasher13(0, 0);
-    let fnvHasher = Fnv.FnvHasher();
-
-    func fnv32Blob(b : Blob) : Nat32 {
-      Fnv.hash32Blob(b)
-    };
-
-    func fnv64Blob(b : Blob) : Nat64 {
-      Fnv.hash64Blob(b)
-    };
 
     func sip32Blob(b : Blob) : Nat32 {
-      sipHasher.reset();
-      sipHasher.writeBlob(b);
-      let hash = sipHasher.finish();
-      Nat64.toNat32(hash >> 32)
-    };
-
-    func sip64Blob(b : Blob) : Nat64 {
-      sipHasher.reset();
-      sipHasher.writeBlob(b);
-      sipHasher.finish();
-    };
-
-    func hashBlob64(hasher : Hasher.Hasher, b : Blob) : Nat64 {
-      hasher.reset();
-      hasher.writeBlob(b);
-      hasher.finish();
+      Nat64.toNat32(Sip13.hashBlob((0, 0), b) >> 32)
     };
 
     func blob(n : Nat) : Blob {
@@ -59,7 +32,6 @@ module {
     };
 
     let blobHashUtilsSip : Hashtable.HashUtils<Blob> = (sip32Blob, Blob.equal);
-    let blobHashUtilsFnv : Hashtable.HashUtils<Blob> = (fnv32Blob, Blob.equal);
 
     let bench = Bench.Bench();
 
@@ -68,61 +40,38 @@ module {
 
     bench.rows([
       "OrderedMap",
+      "HashMap",
+      "Hashtable",
 
-      "HAMT - Sip",
-      "HAMT - Fnv",
+      "pure/Map",
+      "pure/HAMT",
 
-      // "Hashtable - Sip",
-      // "Hashtable - Fnv",
-
-      // "pure/Map",
-      "pure/HAMT - Sip",
-      // "pure/HAMT - Fnv",
-
-      // "oldbase/HashMap - Sip",
-      // "oldbase/Trie - Sip",
+      "oldbase/HashMap",
+      "oldbase/Trie",
     ]);
     bench.cols([
       "0",
       "100",
       "10000",
-      "500000",
+      "100000",
     ]);
 
     bench.runner(func(row, col) {
       let ?n = Nat.fromText(col);
 
-      if (row == "HAMT - Sip") {
-        let blobMap = Ops.Operations<Blob>(sipHasher, hashBlob64, Blob.equal);
-        let map : Hamt.Map<Blob, Nat> = blobMap.new();
+      if (row == "HashMap") {
+        let map : HashMap.Map<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
         for (i in Iter.range(1, n)) {
-          ignore blobMap.insert(map, blob(i), i);
+          ignore HashMap.insert(map, HashMap.blob, blob(i), i);
         };
 
         for (i in Iter.range(1, n)) {
-          ignore blobMap.get(map, blob(i));
-          ignore blobMap.get(map, blobWrong(i));
+          ignore HashMap.get(map, HashMap.blob, blob(i));
+          ignore HashMap.get(map, HashMap.blob, blobWrong(i));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          ignore blobMap.remove(map, blob(i));
-        };
-      };
-
-      if (row == "HAMT - Fnv") {
-        let blobMap = Ops.Operations<Blob>(fnvHasher, hashBlob64, Blob.equal);
-        let map : Hamt.Map<Blob, Nat> = blobMap.new();
-        for (i in Iter.range(1, n)) {
-          ignore blobMap.insert(map, blob(i), i);
-        };
-
-        for (i in Iter.range(1, n)) {
-          ignore blobMap.get(map, blob(i));
-          ignore blobMap.get(map, blobWrong(i));
-        };
-
-        for (i in Iter.range(n + 1, n + n)) {
-          ignore blobMap.remove(map, blob(i));
+          ignore HashMap.remove(map, HashMap.blob, blob(i));
         };
       };
 
@@ -155,38 +104,24 @@ module {
           map := PureMap.remove(map, Blob.compare, blob(i));
         };
       };
-      if (row == "pure/HAMT - Sip") {
+      if (row == "pure/HAMT") {
+        let seed : (Nat64, Nat64) = (0, 0);
         var map = PureHamt.new<Nat>();
         for (i in Iter.range(1, n)) {
-          map := PureHamt.add(map, sip64Blob(blob(i)), i);
+          map := PureHamt.add(map, Sip13.hashBlob(seed, blob(i)), i);
         };
         for (i in Iter.range(1, n)) {
-          ignore PureHamt.get(map, sip64Blob(blob(i)));
-          ignore PureHamt.get(map, sip64Blob(blobWrong(i)));
+          ignore PureHamt.get(map, Sip13.hashBlob(seed, blob(i)));
+          ignore PureHamt.get(map, Sip13.hashBlob(seed, blobWrong(i)));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          let (newMap, _) = PureHamt.remove(map, sip64Blob(blob(i)));
-          map := newMap;
-        };
-      };
-      if (row == "pure/HAMT - Fnv") {
-        var map = PureHamt.new<Nat>();
-        for (i in Iter.range(1, n)) {
-          map := PureHamt.add(map, fnv64Blob(blob(i)), i);
-        };
-        for (i in Iter.range(1, n)) {
-          ignore PureHamt.get(map, fnv64Blob(blob(i)));
-          ignore PureHamt.get(map, fnv64Blob(blobWrong(i)));
-        };
-
-        for (i in Iter.range(n + 1, n + n)) {
-          let (newMap, _) = PureHamt.remove(map, fnv64Blob(blob(i)));
+          let (newMap, _) = PureHamt.remove(map, Sip13.hashBlob(seed, blob(i)));
           map := newMap;
         };
       };
 
-      if (row == "Hashtable - Sip") {
+      if (row == "Hashtable") {
         let map = Hashtable.new<Blob, Nat>();
         for (i in Iter.range(1, n)) {
           ignore Hashtable.put(map, blobHashUtilsSip, blob(i), i);
@@ -201,22 +136,7 @@ module {
         };
       };
 
-      if (row == "Hashtable - Fnv") {
-        let map = Hashtable.new<Blob, Nat>();
-        for (i in Iter.range(1, n)) {
-          ignore Hashtable.put(map, blobHashUtilsFnv, blob(i), i);
-        };
-        for (i in Iter.range(1, n)) {
-          ignore Hashtable.get(map, blobHashUtilsFnv, blob(i));
-          ignore Hashtable.get(map, blobHashUtilsFnv, blobWrong(i));
-        };
-
-        for (i in Iter.range(n + 1, n + n)) {
-          ignore Hashtable.remove(map, blobHashUtilsFnv, blob(i));
-        };
-      };
-
-      if (row == "oldbase/HashMap - Sip") {
+      if (row == "oldbase/HashMap") {
         let map = OldHashMap.HashMap<Blob, Nat>(0, Blob.equal, sip32Blob);
         for (i in Iter.range(1, n)) {
           map.put(blob(i), i);
@@ -231,7 +151,7 @@ module {
         };
       };
 
-      if (row == "oldbase/Trie - Sip") {
+      if (row == "oldbase/Trie") {
         func key(b: Blob) : Trie.Key<Blob> { { hash = sip32Blob(b); key = b } };
         var map : Trie.Trie<Blob, Nat> = Trie.empty();
         for (i in Iter.range(1, n)) {

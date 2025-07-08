@@ -1,5 +1,5 @@
 [dependencies]
-base = "0.14.11"
+base = "0.14.14"
 siphash = "https://github.com/christoph-dfinity/motoko-siphash#bf65d05a084c23a8391b16efaf902b78918d00ad@bf65d05a084c23a8391b16efaf902b78918d00ad"
 
 [dev-dependencies]
@@ -16,4 +16,4 @@ keywords = [ ]
 license = "Apache-2.0"
 
 [toolchain]
-moc = "0.14.11"
+moc = "0.14.14"

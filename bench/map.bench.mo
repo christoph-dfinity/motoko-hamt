@@ -39,27 +39,27 @@ module {
     bench.description("Adds, retrieves, and deletes n map entries");
 
     bench.rows([
-      "OrderedMap",
-      "HashMap",
-      "Hashtable",
+      "hamt/HashMap",
+      "core/Map",
+      "mops/Hashtable",
 
-      "pure/Map",
-      "pure/HAMT",
+      "hamt/pure/HashMap",
+      "core/pure/Map",
 
-      "oldbase/HashMap",
-      "oldbase/Trie",
+      "base/HashMap",
+      "base/Trie",
     ]);
     bench.cols([
       "0",
       "100",
       "10000",
-      "100000",
+      "500000",
     ]);
 
     bench.runner(func(row, col) {
       let ?n = Nat.fromText(col);
 
-      if (row == "HashMap") {
+      if (row == "hamt/HashMap") {
         let map : HashMap.Map<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
         for (i in Iter.range(1, n)) {
           ignore HashMap.insert(map, HashMap.blob, blob(i), i);
@@ -75,7 +75,7 @@ module {
         };
       };
 
-      if (row == "OrderedMap") {
+      if (row == "core/Map") {
         let map = Map.empty<Blob, Nat>();
         for (i in Iter.range(1, n)) {
           Map.add(map, Blob.compare, blob(i), i);
@@ -90,21 +90,22 @@ module {
         };
       };
 
-      if (row == "pure/Map") {
-        var map = PureMap.empty<Blob, Nat>();
+      if (row == "mops/Hashtable") {
+        let map = Hashtable.new<Blob, Nat>();
         for (i in Iter.range(1, n)) {
-          map := PureMap.add(map, Blob.compare, blob(i), i);
+          ignore Hashtable.put(map, blobHashUtilsSip, blob(i), i);
         };
         for (i in Iter.range(1, n)) {
-          ignore PureMap.get(map, Blob.compare, blob(i));
-          ignore PureMap.get(map, Blob.compare, blobWrong(i));
+          ignore Hashtable.get(map, blobHashUtilsSip, blob(i));
+          ignore Hashtable.get(map, blobHashUtilsSip, blobWrong(i));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          map := PureMap.remove(map, Blob.compare, blob(i));
+          ignore Hashtable.remove(map, blobHashUtilsSip, blob(i));
         };
       };
-      if (row == "pure/HAMT") {
+
+      if (row == "hamt/pure/HashMap") {
         let seed : (Nat64, Nat64) = (0, 0);
         var map = PureHamt.new<Nat>();
         for (i in Iter.range(1, n)) {
@@ -121,22 +122,22 @@ module {
         };
       };
 
-      if (row == "Hashtable") {
-        let map = Hashtable.new<Blob, Nat>();
+      if (row == "core/pure/Map") {
+        var map = PureMap.empty<Blob, Nat>();
         for (i in Iter.range(1, n)) {
-          ignore Hashtable.put(map, blobHashUtilsSip, blob(i), i);
+          map := PureMap.add(map, Blob.compare, blob(i), i);
         };
         for (i in Iter.range(1, n)) {
-          ignore Hashtable.get(map, blobHashUtilsSip, blob(i));
-          ignore Hashtable.get(map, blobHashUtilsSip, blobWrong(i));
+          ignore PureMap.get(map, Blob.compare, blob(i));
+          ignore PureMap.get(map, Blob.compare, blobWrong(i));
         };
 
         for (i in Iter.range(n + 1, n + n)) {
-          ignore Hashtable.remove(map, blobHashUtilsSip, blob(i));
+          map := PureMap.remove(map, Blob.compare, blob(i));
         };
       };
 
-      if (row == "oldbase/HashMap") {
+      if (row == "base/HashMap") {
         let map = OldHashMap.HashMap<Blob, Nat>(0, Blob.equal, sip32Blob);
         for (i in Iter.range(1, n)) {
           map.put(blob(i), i);
@@ -151,7 +152,7 @@ module {
         };
       };
 
-      if (row == "oldbase/Trie") {
+      if (row == "base/Trie") {
         func key(b: Blob) : Trie.Key<Blob> { { hash = sip32Blob(b); key = b } };
         var map : Trie.Trie<Blob, Nat> = Trie.empty();
         for (i in Iter.range(1, n)) {

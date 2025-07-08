@@ -1,7 +1,7 @@
 import Bench "mo:bench";
 import Blob "mo:base/Blob";
 import Debug "mo:base/Debug";
-import HashMap "../src/Map";
+import HashMap "../src/HashMap";
 import PureHamt "../src/pure/Hamt";
 import Hashtable "mo:hashmap/Map";
 import Iter "mo:base/Iter";
@@ -60,7 +60,7 @@ module {
       let ?n = Nat.fromText(col);
 
       if (row == "hamt/HashMap") {
-        let map : HashMap.Map<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
+        let map : HashMap.HashMap<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
         for (i in Iter.range(1, n)) {
           ignore HashMap.insert(map, HashMap.blob, blob(i), i);
         };

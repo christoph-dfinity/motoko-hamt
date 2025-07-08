@@ -1,11 +1,11 @@
 [dependencies]
 base = "0.14.11"
+siphash = "https://github.com/christoph-dfinity/motoko-siphash#bf65d05a084c23a8391b16efaf902b78918d00ad@bf65d05a084c23a8391b16efaf902b78918d00ad"
 
 [dev-dependencies]
 bench = "1.0.0"
 matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd@3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
 hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828eee3064d939a3259eab78@94d509f97d70ac03828eee3064d939a3259eab78"
-siphash = "https://github.com/christoph-dfinity/motoko-siphash#bf65d05a084c23a8391b16efaf902b78918d00ad@bf65d05a084c23a8391b16efaf902b78918d00ad"
 
 [package]
 name = "hamt"

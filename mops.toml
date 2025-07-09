@@ -1,20 +1,20 @@
+[package]
+name = "hamt"
+version = "1.0.0"
+description = "Hash Array Mapped Tries for Motoko"
+repository = "https://github.com/christoph-dfinity/motoko-hamt"
+keywords = [ "data-structure", "hashmap" ]
+license = "Apache-2.0"
+
 [dependencies]
 core = "0.5.0"
-siphash = "https://github.com/christoph-dfinity/motoko-siphash#bf65d05a084c23a8391b16efaf902b78918d00ad@bf65d05a084c23a8391b16efaf902b78918d00ad"
+siphash = "1.0.0"
 
 [dev-dependencies]
 bench = "1.0.0"
 matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd@3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
 hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828eee3064d939a3259eab78@94d509f97d70ac03828eee3064d939a3259eab78"
 base = "0.14.14" # For benchmarking against old base structures
-
-[package]
-name = "hamt"
-version = "1.0.0"
-description = "Hash Array Mapped Tries for Motoko"
-repository = "https://github.com/christoph-dfinity/motoko-hamt"
-keywords = [ ]
-license = "Apache-2.0"
 
 [toolchain]
 moc = "0.14.14"

@@ -8,7 +8,7 @@ let
   additions =
     [
       { name = "siphash"
-      , version = "bf65d05a084c23a8391b16efaf902b78918d00ad"
+      , version = "1.0.0"
       , repo = "https://github.com/christoph-dfinity/motoko-siphash"
       , dependencies = ["base"] : List Text
       },

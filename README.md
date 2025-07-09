@@ -10,35 +10,32 @@ blowing past the instruction limit for single messages when maps grow large.
 
 Run via `mops bench map`. Compares the performance of maps in core, base, and hamt, as well as the [most popular hash table](https://github.com/ZhenyaUsenko/motoko-hash-map) on Mops.
 
-Comparing Hash-based and Ordered Maps
+### Comparing Hash-based and Ordered Maps
 
 Adds, retrieves, and deletes n map entries
-
 
 ### Instructions
 
 |                   |     0 |       100 |       10000 |         500000 |
 | :---------------- | ----: | --------: | ----------: | -------------: |
-| hamt/HashMap      | 3_207 | 1_444_184 | 223_831_019 | 14_581_223_825 |
-| core/Map          | 3_642 | 1_860_168 | 356_299_809 | 26_656_132_329 |
-| mops/Hashtable    | 2_904 | 1_213_662 | 189_693_390 | 11_776_742_922 |
-| hamt/pure/HashMap | 3_083 | 1_519_117 | 305_773_127 | 21_663_859_709 |
-| core/pure/Map     | 2_976 | 1_311_807 | 268_446_651 | 19_906_471_429 |
-| base/HashMap      | 3_541 | 4_182_989 | 500_269_756 | 26_873_255_625 |
-| base/Trie         | 2_857 | 2_242_065 | 394_808_695 | 26_984_505_316 |
-
+| hamt/HashMap      | 2_843 | 1_373_723 | 211_903_667 | 13_757_848_623 |
+| core/Map          | 3_287 | 1_615_187 | 315_615_743 | 23_656_786_785 |
+| mops/Hashtable    | 2_570 | 1_053_379 | 169_833_712 | 10_643_041_799 |
+| hamt/pure/HashMap | 2_732 | 1_360_991 | 278_332_718 | 19_747_407_296 |
+| core/pure/Map     | 2_638 | 1_123_594 | 233_978_304 | 17_400_556_567 |
+| base/HashMap      | 3_180 | 3_899_020 | 467_588_323 | 25_059_203_769 |
+| base/Trie         | 2_546 | 1_959_140 | 347_048_729 | 23_677_668_146 |
 
 ### Garbage Collection
 
 |                   |     0 |        100 |     10000 |     500000 |
 | :---------------- | ----: | ---------: | --------: | ---------: |
-| hamt/HashMap      | 640 B |  61.37 KiB |  7.95 MiB | 492.59 MiB |
-| core/Map          | 752 B |  25.16 KiB |  4.47 MiB | 369.27 MiB |
-| mops/Hashtable    | 540 B |  22.95 KiB |  3.32 MiB | 201.19 MiB |
-| hamt/pure/HashMap | 528 B |  57.63 KiB | 11.04 MiB | 785.18 MiB |
-| core/pure/Map     | 528 B | 118.27 KiB | 21.76 MiB |   1.56 GiB |
-| base/HashMap      | 864 B | 163.13 KiB | 16.99 MiB | 829.17 MiB |
-| base/Trie         | 528 B | 106.89 KiB | 17.91 MiB |    1.2 GiB |
-
+| hamt/HashMap      | 640 B |   60.3 KiB |  7.91 MiB | 490.68 MiB |
+| core/Map          | 752 B |  24.89 KiB |  4.47 MiB | 369.27 MiB |
+| mops/Hashtable    | 540 B |   22.8 KiB |  3.32 MiB | 201.19 MiB |
+| hamt/pure/HashMap | 528 B |  58.42 KiB | 11.19 MiB | 792.81 MiB |
+| core/pure/Map     | 528 B | 116.82 KiB | 21.76 MiB |   1.56 GiB |
+| base/HashMap      | 864 B | 162.48 KiB | 16.99 MiB | 829.17 MiB |
+| base/Trie         | 528 B | 105.22 KiB | 17.91 MiB |    1.2 GiB |
 
 [Hash Array Mapped Tries]: https://infoscience.epfl.ch/server/api/core/bitstreams/f66a3023-2cd0-4b26-af6e-91a9a6ae7450/content

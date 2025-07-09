@@ -94,14 +94,14 @@ module {
 
   public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
     let hamt : Hamt<A> = new();
-    add(hamt, hash, value);
+    ignore insert(hamt, hash, value);
     hamt
   };
 
   public func fromIter<A>(iter : Iter.Iter<(Hash, A)>) : Hamt<A> {
     let hamt : Hamt<A> = new();
     for ((h, v) in iter) {
-      add(hamt, h, v);
+      ignore insert(hamt, h, v);
     };
     hamt
   };
@@ -119,11 +119,7 @@ module {
     ?v
   };
 
-  public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) {
-    ignore swap(hamt, hash, value);
-  };
-
-  public func swap<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
+  public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
     var previous : ?A = null;
     upsert(hamt, hash, func (prev : ?A) : A {
       previous := prev;

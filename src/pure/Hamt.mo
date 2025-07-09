@@ -100,11 +100,10 @@ module {
   };
 
   public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) : Hamt<A> {
-    let (new, _) = swap(hamt, hash, value);
-    new
+    insert(hamt, hash, value).0;
   };
 
-  public func swap<A>(hamt : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
+  public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
     let (newRoot, replaced) = addMapped(hamt.root, 0, hash, value);
     let newSize = if (Option.isSome(replaced)) { hamt.size } else { hamt.size + 1 };
     ({ root = newRoot; size = newSize }, replaced);

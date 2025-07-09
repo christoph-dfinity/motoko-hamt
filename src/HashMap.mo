@@ -73,7 +73,7 @@ module {
     let ?bucket = Hamt.remove(map.hamt, hashed) else return null;
     let removed = Bucket.remove(bucket, hashFn.1, key);
     if (not List.isNil(bucket.items)) {
-      Hamt.add(map.hamt, hashed, bucket)
+      ignore Hamt.insert(map.hamt, hashed, bucket)
     };
     if (Option.isSome(removed)) {
       map.size -= 1;

@@ -18,32 +18,32 @@ func natHash(n : Nat) : Nat64 {
 let suite = S.suite("HAMT", [
   S.test("add hashes with shared prefixes", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, (0 : Nat64), 0);
-    Hamt.add(hamt, (64 : Nat64), 64);
-    Hamt.add(hamt, (64 * 64: Nat64), 64 * 64);
-    Hamt.add(hamt, (64 * 64 * 64: Nat64), 64 * 64 * 64);
+    ignore Hamt.insert(hamt, (0 : Nat64), 0);
+    ignore Hamt.insert(hamt, (64 : Nat64), 64);
+    ignore Hamt.insert(hamt, (64 * 64: Nat64), 64 * 64);
+    ignore Hamt.insert(hamt, (64 * 64 * 64: Nat64), 64 * 64 * 64);
     Hamt.get(hamt, (64 * 64 : Nat64));
   }, M.equals(T.optional(T.natTestable, ?(64 * 64)))),
   S.test("add overlapping hashes", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, (0 : Nat64), 0);
-    Hamt.swap(hamt, (0 : Nat64), 1);
+    ignore Hamt.insert(hamt, (0 : Nat64), 0);
+    Hamt.insert(hamt, (0 : Nat64), 1);
   }, M.equals(T.optional(T.natTestable, ?0))),
   S.test("remove", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, (0 : Nat64), 0);
+    ignore Hamt.insert(hamt, (0 : Nat64), 0);
     Hamt.remove(hamt, (0 : Nat64));
   }, M.equals(T.optional(T.natTestable, ?0))),
   S.test("remove non-existing", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, (0 : Nat64), 0);
+    ignore Hamt.insert(hamt, (0 : Nat64), 0);
     ignore Hamt.remove(hamt, (0 : Nat64));
     Hamt.remove(hamt, (0 : Nat64));
   }, M.equals(T.optional(T.natTestable, (null : ?Nat)))),
   S.test("remove from nested tree", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, (0 : Nat64), 0);
-    Hamt.add(hamt, (64 : Nat64), 64);
+    ignore Hamt.insert(hamt, (0 : Nat64), 0);
+    ignore Hamt.insert(hamt, (64 : Nat64), 64);
     Debug.print(Hamt.showStructure(hamt));
     let removed = Hamt.remove(hamt, (0 : Nat64));
     Debug.print(Hamt.showStructure(hamt));
@@ -54,7 +54,7 @@ let suite = S.suite("HAMT", [
   S.test("full on", do {
     let hamt = Hamt.new<Nat>();
     for (i in Iter.range(1, 100)) {
-      Hamt.add(hamt, natHash(i), i);
+      ignore Hamt.insert(hamt, natHash(i), i);
     };
 
     var sum : Nat = 0;
@@ -75,8 +75,8 @@ let suite = S.suite("HAMT", [
   }, M.equals(T.nat(5050))),
   S.test("Test compaction on remove", do {
     let hamt = Hamt.new<Nat>();
-    Hamt.add(hamt, 0 : Nat64, 0);
-    Hamt.add(hamt, (64 * 64 : Nat64), 64 * 64);
+    ignore Hamt.insert(hamt, 0 : Nat64, 0);
+    ignore Hamt.insert(hamt, (64 * 64 : Nat64), 64 * 64);
     let nestedDepth = Hamt.maxDepth(hamt);
     ignore Hamt.remove(hamt, (0 : Nat64));
     let depthAfterRemoval = Hamt.maxDepth(hamt);

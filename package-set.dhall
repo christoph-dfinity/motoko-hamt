@@ -12,6 +12,11 @@ let
       , repo = "https://github.com/christoph-dfinity/motoko-siphash"
       , dependencies = ["base"] : List Text
       },
+      { name = "core"
+      , version = "preview-0.5.0"
+      , repo = "https://github.com/dfinity/motoko-core"
+      , dependencies = [] : List Text
+      },
     ] : List Package
 
 in  upstream # additions

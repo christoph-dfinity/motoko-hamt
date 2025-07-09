@@ -2,17 +2,16 @@
 
 // TODO: Implement equals
 
-import AL "mo:base/AssocList";
-import Blob "mo:base/Blob";
+import Blob "mo:core/Blob";
 import Hamt "Hamt";
-import Iter "mo:base/Iter";
-import List "mo:base/List";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Nat64 "mo:base/Nat64";
-import Option "mo:base/Option";
+import Int "mo:core/Int";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Nat64 "mo:core/Nat64";
+import Option "mo:core/Option";
 import Sip13 "mo:siphash/Sip13";
-import Text "mo:base/Text";
+import Text "mo:core/Text";
+import VarArray "mo:core/VarArray";
 
 module {
   /// An imperative key-value hash map.
@@ -105,7 +104,7 @@ module {
   /// ```
   public func singleton<K, V>(seed : Seed, hashFn : HashFn<K>, key : K, value : V) : HashMap<K, V> {
     let hashed = hashFn.0(seed, key);
-    { hamt = Hamt.singleton(hashed, { var items = List.make((key, value)) }); var size = 1; seed };
+    { hamt = Hamt.singleton(hashed, { var items = [var (key, value)] }); var size = 1; seed };
   };
 
   /// Create a mutable HashMap with the entries obtained from an iterator.
@@ -163,7 +162,7 @@ module {
     Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
       switch (prev) {
         case null {
-          { var items = List.make((key, value)) }
+          { var items = [var (key, value)] }
         };
         case (?bucket) {
           let replaced = Bucket.add(bucket, hashFn.1, key, value);
@@ -226,7 +225,7 @@ module {
     let hashed = hashFn.0(map.seed, key);
     let ?bucket = Hamt.remove(map.hamt, hashed) else return null;
     let removed = Bucket.remove(bucket, hashFn.1, key);
-    if (not List.isNil(bucket.items)) {
+    if (not (bucket.items.size() == 0)) {
       ignore Hamt.insert(map.hamt, hashed, bucket)
     };
     if (Option.isSome(removed)) {
@@ -281,14 +280,14 @@ module {
     let ?(_, initialBucket) = inner.next() else {
       return object { public func next() : ?(K, V) { return null } }
     };
-    var currentBucket : Iter.Iter<(K, V)> = List.toIter(initialBucket.items);
+    var currentBucket : Iter.Iter<(K, V)> = initialBucket.items.values();
     object {
       public func next() : ?(K, V) {
         let nextEntry = currentBucket.next();
         switch (nextEntry) {
           case null {
             let ?(_, nextBucket) = inner.next() else { return null };
-            currentBucket := List.toIter(nextBucket.items);
+            currentBucket := nextBucket.items.values();
             currentBucket.next();
           };
           case _ {
@@ -382,23 +381,49 @@ module {
 
   module Bucket {
     public type T<K, V> = {
-      var items : AL.AssocList<K, V>;
+      var items : [var (K, V)];
     };
 
     public func add<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K, value : V) : ?V {
-      let (newList, replaced) = AL.replace(b.items, key, eq, ?value);
-      b.items := newList;
-      replaced
+      var i : Nat = 0;
+      let size = b.items.size();
+      while (i < size) {
+        let (k, v) = b.items[i];
+        if (eq(k, key)) {
+          b.items[i] := (key, value);
+          return ?v
+        };
+        i += 1;
+      };
+      b.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) b.items[i] else (key, value));
+      null
     };
 
     public func get<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
-      AL.find(b.items, key, eq)
+      var i : Nat = 0;
+      let size = b.items.size();
+      while (i < size) {
+        let (k, v) = b.items[i];
+        if (eq(k, key)) {
+          return ?v
+        };
+        i += 1;
+      };
+      null
     };
 
     public func remove<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
-      let (newList, replaced) = AL.replace(b.items, key, eq, null);
-      b.items := newList;
-      replaced
+      var i : Nat = 0;
+      let size = b.items.size();
+      while (i < size) {
+        let (k, v) = b.items[i];
+        if (eq(k, key)) {
+          b.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
+          return ?v
+        };
+        i += 1;
+      };
+      null
     };
   };
 }

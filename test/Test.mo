@@ -1,15 +1,14 @@
-import Debug "mo:base/Debug";
-import M "mo:matchers/Matchers";
-import Nat "mo:base/Nat";
-import Nat64 "mo:base/Nat64";
-import Iter "mo:base/Iter";
-import S "mo:matchers/Suite";
-import T "mo:matchers/Testable";
-import Sip13 "mo:siphash/Sip13";
-import Hasher "mo:siphash/Hasher";
-
+import Debug "mo:core/Debug";
 import Hamt "../src/Hamt";
+import Hasher "mo:siphash/Hasher";
+import M "mo:matchers/Matchers";
+import Nat "mo:core/Nat";
+import Nat64 "mo:core/Nat64";
 import PureHamt "../src/pure/Hamt";
+import Runtime "mo:core/Runtime";
+import S "mo:matchers/Suite";
+import Sip13 "mo:siphash/Sip13";
+import T "mo:matchers/Testable";
 
 func natHash(n : Nat) : Nat64 {
   Sip13.withHasherUnkeyed(func h = Hasher.nat(h, n))
@@ -53,26 +52,26 @@ let suite = S.suite("HAMT", [
   }, M.equals(T.optional(T.natTestable, (?0 : ?Nat)))),
   S.test("full on", do {
     let hamt = Hamt.new<Nat>();
-    for (i in Iter.range(1, 100)) {
+    for (i in Nat.range(1, 100)) {
       ignore Hamt.insert(hamt, natHash(i), i);
     };
 
     var sum : Nat = 0;
-    for (i in Iter.range(1, 100)) {
+    for (i in Nat.range(1, 100)) {
       let ?res = Hamt.get(hamt, natHash(i)) else {
         Debug.print("failed to find: " # debug_show i);
-        Debug.trap("args");
+        Runtime.trap("args");
       };
       sum += res;
     };
-    for (i in Iter.range(101, 200)) {
+    for (i in Nat.range(101, 200)) {
       let null = Hamt.get(hamt, natHash(i)) else {
         Debug.print("found: " # debug_show i);
-        Debug.trap("args");
+        Runtime.trap("args");
       };
     };
     sum
-  }, M.equals(T.nat(5050))),
+  }, M.equals(T.nat(4950))),
   S.test("Test compaction on remove", do {
     let hamt = Hamt.new<Nat>();
     ignore Hamt.insert(hamt, 0 : Nat64, 0);

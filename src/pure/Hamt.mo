@@ -1,13 +1,13 @@
-import Iter "mo:base/Iter";
-import Text "mo:base/Text";
-import Nat "mo:base/Nat";
-import Nat32 "mo:base/Nat32";
-import Nat64 "mo:base/Nat64";
-import Array "mo:base/Array";
-import Char "mo:base/Char";
-import Debug "mo:base/Debug";
-import List "mo:base/List";
-import Option "mo:base/Option";
+import Array "mo:core/Array";
+import Char "mo:core/Char";
+import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
+import Nat32 "mo:core/Nat32";
+import Nat64 "mo:core/Nat64";
+import Option "mo:core/Option";
+import Runtime "mo:core/Runtime";
+import Stack "mo:core/Stack";
+import Text "mo:core/Text";
 
 module {
   public type Hash = Nat64;
@@ -19,7 +19,7 @@ module {
   public func showBinary(x : Hash) : Text {
     var n = x;
     var res = "";
-    for (i in Iter.range(0, 63)) {
+    for (i in Nat.range(0, 64)) {
       if (i != 0 and i % BITS_PER_LEVEL == 0) res := "_" # res;
       if (n & 1 == 1) { res := "1" # res } else { res := "0" # res };
       n := n >> 1;
@@ -30,7 +30,7 @@ module {
   public func showHex(x : Hash) : Text {
     var n = x;
     var res = "";
-    for (i in Iter.range(0, 7)) {
+    for (i in Nat.range(0, 8)) {
       let digit = n & 15;
       if (digit < 10) {
         res := Nat64.toText(digit) # res;
@@ -138,7 +138,7 @@ module {
     switch (removeRec(hamt.root, 0, hash)) {
       case (#notFound) (hamt, null);
       case (#success(l)) ({ root = l.newNode; size = hamt.size - 1 }, ?l.removed.1);
-      case (#gathered(_)) Debug.trap("Must never gather the root node");
+      case (#gathered(_)) Runtime.trap("Must never gather the root node");
     };
   };
 
@@ -275,17 +275,16 @@ module {
   // Copied verbatim from imperative module
   type NodeCursor<A> = { node : Anchor<A>; var index : Nat };
   type IterState<A> = {
-    var stack : List.List<NodeCursor<A>>;
+    var stack : Stack.Stack<NodeCursor<A>>;
   };
 
   public func iter<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
-    let state : IterState<A> = { var stack = List.make({ node = hamt.root; var index = 0 }) };
+    let state : IterState<A> = { var stack = Stack.singleton({ node = hamt.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {
         label outer loop {
-          let ?(current, tail) = state.stack else { return null };
+          let ?current = Stack.pop(state.stack) else { return null };
           if (current.node.nodes.size() <= current.index) {
-            state.stack := tail;
             continue outer;
           };
           switch (current.node.nodes[current.index]) {
@@ -295,7 +294,7 @@ module {
             };
             case (#bitMapped(bm)) {
               current.index += 1;
-              state.stack := ?({ node = bm; var index = 0 }, state.stack);
+              Stack.push(state.stack, { node = bm; var index = 0 });
               continue outer;
             }
           };

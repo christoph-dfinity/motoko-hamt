@@ -6,7 +6,6 @@ import HashMap "../src/HashMap";
 import PureHamt "../src/pure/Hamt";
 
 import Blob "mo:core/Blob";
-import Iter "mo:core/Iter";
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Nat64 "mo:core/Nat64";
@@ -18,8 +17,6 @@ import Trie "mo:base/Trie";
 
 module {
   public func init() : Bench.Bench {
-    let sipHasher = Sip13.SipHasher13(0, 0);
-
     func sip32Blob(b : Blob) : Nat32 {
       Nat64.toNat32(Sip13.hashBlob((0, 0), b) >> 32)
     };
@@ -58,7 +55,7 @@ module {
     ]);
 
     bench.runner(func(row, col) {
-      let ?n = Nat.fromText(col);
+      let ?n = Nat.fromText(col) else { return };
 
       if (row == "hamt/HashMap") {
         let map : HashMap.HashMap<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));

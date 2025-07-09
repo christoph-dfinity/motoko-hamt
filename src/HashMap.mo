@@ -11,7 +11,10 @@ import Nat64 "mo:core/Nat64";
 import Option "mo:core/Option";
 import Sip13 "mo:siphash/Sip13";
 import Text "mo:core/Text";
-import VarArray "mo:core/VarArray";
+
+// TODO: Swap around once https://github.com/dfinity/motoko-core/pull/334 lands
+// import VarArray "mo:core/VarArray";
+import Prim "mo:prim";
 
 module {
   /// An imperative key-value hash map.
@@ -395,7 +398,7 @@ module {
         };
         i += 1;
       };
-      b.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) b.items[i] else (key, value));
+      b.items := Prim.Array_tabulateVar<(K, V)>(size + 1, func i = if (i != size) b.items[i] else (key, value));
       null
     };
 
@@ -418,7 +421,7 @@ module {
       while (i < size) {
         let (k, v) = b.items[i];
         if (eq(k, key)) {
-          b.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
+          b.items := Prim.Array_tabulateVar<(K, V)>(size - 1, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
           return ?v
         };
         i += 1;

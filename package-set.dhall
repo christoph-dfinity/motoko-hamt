@@ -12,6 +12,11 @@ let
       , repo = "https://github.com/christoph-dfinity/motoko-siphash"
       , dependencies = ["base"] : List Text
       },
+      { name = "bench"
+      , version = "d4ce879cf251a27fa7167b523eee622baca42a53"
+      , repo = "https://github.com/ZenVoich/bench"
+      , dependencies = [] : List Text
+      },
       { name = "core"
       , version = "preview-0.5.0"
       , repo = "https://github.com/dfinity/motoko-core"

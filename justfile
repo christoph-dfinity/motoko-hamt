@@ -1,7 +1,7 @@
 default: test
 
 check:
-    $(vessel bin)/moc --check $(vessel sources) src/*.mo src/pure/*.mo test/*.mo
+  $(vessel bin)/moc --check $(vessel sources) src/*.mo src/pure/*.mo test/*.mo bench/*.mo
 
 test:
   rm -rf Test.wasm

@@ -1,19 +1,21 @@
 # Motoko HAMT
 
-An implementation of [Hash Array Mapped Tries] (HAMTs) in Motoko.
+A stable HashMap for Motoko based on [Hash Array Mapped Tries].
 
-Uses 64bit hashes as keys, and linked lists for conflicts in the leafs.
+Uses 64bit hashes as keys, and lists for conflicts in the leafs. Provides basically constant (log64) retrieval, insertion, removal.
+While slower than a Hashtable in an amortized scenario the HAMT avoids linear re-hashing/resizing operations. This avoids
+blowing past the instruction limit for single messages when maps grow large.
 
 ## Benchmarks
 
-Run via `mops bench map`. Compares the performance of core/Map, core/pure/Map, HAMT, as well as the [most popular hash table](https://github.com/ZhenyaUsenko/motoko-hash-map) on Mops.
+Run via `mops bench map`. Compares the performance of maps in core, base, and hamt, as well as the [most popular hash table](https://github.com/ZhenyaUsenko/motoko-hash-map) on Mops.
 
 Comparing Hash-based and Ordered Maps
 
 Adds, retrieves, and deletes n map entries
 
 
-## Instructions
+### Instructions
 
 |                   |     0 |       100 |       10000 |         500000 |
 | :---------------- | ----: | --------: | ----------: | -------------: |
@@ -26,7 +28,7 @@ Adds, retrieves, and deletes n map entries
 | base/Trie         | 2_857 | 2_242_065 | 394_808_695 | 26_984_505_316 |
 
 
-## Garbage Collection
+### Garbage Collection
 
 |                   |     0 |        100 |     10000 |     500000 |
 | :---------------- | ----: | ---------: | --------: | ---------: |

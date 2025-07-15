@@ -18,3 +18,4 @@ base = "0.14.14" # For benchmarking against old base structures
 
 [toolchain]
 moc = "0.14.14"
+wasmtime = "21.0.0"

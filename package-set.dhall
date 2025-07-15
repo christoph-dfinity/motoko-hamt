@@ -17,6 +17,11 @@ let
       , repo = "https://github.com/ZenVoich/bench"
       , dependencies = [] : List Text
       },
+      { name = "test"
+      , version = "e87a718eba50c0c5d2bd8b52320ed3c51f67e2cf"
+      , repo = "https://github.com/ZenVoich/test"
+      , dependencies = ["base"] : List Text
+      },
       { name = "hashmap"
       , version = "94d509f97d70ac03828eee3064d939a3259eab78"
       , repo = "https://github.com/ZhenyaUsenko/motoko-hash-map"

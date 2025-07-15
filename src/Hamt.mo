@@ -310,8 +310,9 @@ module {
     object {
       public func next() : ?(Hash, A) {
         label outer loop {
-          let ?current = Stack.pop(state.stack) else { return null };
+          let ?current = Stack.peek(state.stack) else { return null };
           if (current.node.nodes.size() <= current.index) {
+            ignore Stack.pop(state.stack);
             continue outer;
           };
           switch (current.node.nodes[current.index]) {

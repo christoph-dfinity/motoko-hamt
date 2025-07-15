@@ -9,6 +9,7 @@ import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 import Nat64 "mo:core/Nat64";
 import Option "mo:core/Option";
+import Principal "mo:core/Principal";
 import Sip13 "mo:siphash/Sip13";
 import Text "mo:core/Text";
 
@@ -65,16 +66,20 @@ module {
   );
 
   /// A hashing function for Blob
-  public let blob = (Sip13.hashBlob, Blob.equal);
+  public let blob : HashFn<Blob> = (Sip13.hashBlob, Blob.equal);
 
   /// A hashing function for Text
-  public let text = (Sip13.hashText, Text.equal);
+  public let text : HashFn<Text> = (Sip13.hashText, Text.equal);
 
   /// A hashing function for Nat
-  public let nat = (Sip13.hashNat, Nat.equal);
+  public let nat : HashFn<Nat> = (Sip13.hashNat, Nat.equal);
 
   /// A hashing function for Int
-  public let int = (Sip13.hashInt, Int.equal);
+  public let int : HashFn<Int> = (Sip13.hashInt, Int.equal);
+
+  /// A hashing function for Principals
+  public let principal : HashFn<Principal> =
+    (func (s, p) = Sip13.hashBlob(s, Principal.toBlob(p)), Principal.equal);
 
   /// Create a new empty mutable HashMap.
   ///

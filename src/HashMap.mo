@@ -281,7 +281,7 @@ module {
   public func entries<K, V>(map : HashMap<K, V>) : Iter.Iter<(K, V)> {
     let inner = Hamt.entries(map.hamt);
     let ?(_, initialBucket) = inner.next() else {
-      return object { public func next() : ?(K, V) { return null } }
+      return Iter.empty()
     };
     var currentBucket : Iter.Iter<(K, V)> = initialBucket.items.values();
     object {

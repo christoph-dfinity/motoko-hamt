@@ -254,7 +254,7 @@ module {
   ///   assert not Map.containsKey(map, HashMap.nat, 3);
   /// }
   /// ```
-  public func containsKey<K, V>(hashFn : HashFn<K>, map : HashMap<K, V>, key : K) : Bool {
+  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : Bool {
     get(map, hashFn, key) |> Option.isSome(_);
   };
 

@@ -1,6 +1,6 @@
 [package]
 name = "hamt"
-version = "1.0.1"
+version = "1.1.0"
 description = "Hash Array Mapped Tries for Motoko"
 repository = "https://github.com/christoph-dfinity/motoko-hamt"
 keywords = [ "data-structure", "hashmap" ]

@@ -6,10 +6,7 @@ import Nat64 "mo:core/Nat64";
 import Runtime "mo:core/Runtime";
 import Stack "mo:core/Stack";
 import Text "mo:core/Text";
-
-// TODO: Swap around once https://github.com/dfinity/motoko-core/pull/334 lands
-// import VarArray "mo:core/VarArray";
-import Prim "mo:prim";
+import VarArray "mo:core/VarArray";
 
 module {
   public type Hash = Nat64;
@@ -380,7 +377,7 @@ module {
   };
 
   func insertVarArray<A>(as : [var A], a : A, ix : Nat) : [var A] {
-    Prim.Array_tabulateVar(
+    VarArray.tabulate(
       as.size() + 1,
       func(i : Nat) : A {
         if (i < ix) { as[i] }
@@ -391,7 +388,7 @@ module {
   };
 
   func removeVarArray<A>(as : [var A], ix : Nat) : [var A] {
-    Prim.Array_tabulateVar(
+    VarArray.tabulate(
       (as.size() - 1 : Nat),
       func(i : Nat) : A {
         if (i < ix) { as[i] } else { as[i + 1] };

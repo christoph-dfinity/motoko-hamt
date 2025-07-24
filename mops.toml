@@ -7,7 +7,7 @@ keywords = [ "data-structure", "hashmap" ]
 license = "Apache-2.0"
 
 [dependencies]
-core = "0.5.0"
+core = "0.6.0"
 siphash = "1.0.0"
 
 [dev-dependencies]

@@ -204,7 +204,7 @@ module {
       { bitmap; nodes };
     } else {
       let bitmap = nextPos1;
-      let newNode : Bitmapped<A> = mergeLeafs<A>(shift + BITS_PER_LEVEL, leaf, h2, v2);
+      let newNode : Bitmapped<A> = mergeLeafs(shift + BITS_PER_LEVEL, leaf, h2, v2);
       { bitmap; nodes = [#bitMapped(newNode)] };
     };
   };

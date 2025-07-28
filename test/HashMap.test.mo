@@ -5,14 +5,13 @@ import M "mo:matchers/Matchers";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 import Text "mo:core/Text";
-import Order "mo:core/Order";
 import Array "mo:core/Array";
 import Option "mo:core/Option";
 import HashMap "../src/HashMap";
 
 let { run; test; suite } = Suite;
 
-let entryTestable = T.tuple2Testable(T.natTestable, T.textTestable);
+let entryTestable : T.Testable<(Nat, Text)> = T.tuple2Testable(T.natTestable, T.textTestable);
 
 type HashMap<K, V> = HashMap.HashMap<K, V>;
 
@@ -27,7 +26,7 @@ func singleton<V>(key : Nat, v : V) : HashMap<Nat, V> {
 func sortedEntries<V>(map : HashMap<Nat, V>) : [(Nat, V)] {
   Array.sort(
     Iter.toArray(HashMap.entries(map)),
-    func (e1 : (Nat, V), e2 : (Nat, V)) : Order.Order = Nat.compare(e1.0, e2.0)
+    func (e1, e2) = Nat.compare(e1.0, e2.0)
   )
 };
 
@@ -140,7 +139,12 @@ run(
       test(
         "from iterator",
         do {
-          let map = HashMap.fromIter<Nat, Text>((0, 0) : HashMap.Seed, HashMap.nat, Iter.fromArray<(Nat, Text)>([]));
+          let map : HashMap.HashMap<Nat, Text> = HashMap.fromIter(
+            // Still need this annotation. Would be neat if we could somehow put it in checking position?
+            (0, 0) : HashMap.Seed,
+            HashMap.nat,
+            Iter.fromArray([])
+          );
           HashMap.size(map)
         },
         M.equals(T.nat(0))
@@ -189,7 +193,7 @@ run(
           ignore HashMap.insert(map, HashMap.nat, 0, "1");
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "1")]))
+        M.equals(T.array(entryTestable, [(0, "1")]))
       ),
       test(
         "add singleton new",
@@ -201,7 +205,7 @@ run(
           // };
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "0"), (1, "1")]))
+        M.equals(T.array(entryTestable, [(0, "0"), (1, "1")]))
       ),
       test(
         "insert singleton old",
@@ -210,7 +214,7 @@ run(
           assert (HashMap.insert(map, HashMap.nat, 0, "1") == ?"0");
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "1")]))
+        M.equals(T.array(entryTestable, [(0, "1")]))
       ),
       test(
         "insert singleton new",
@@ -219,7 +223,7 @@ run(
           assert HashMap.insert(map, HashMap.nat, 1, "1") == null;
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "0"), (1, "1")]))
+        M.equals(T.array(entryTestable, [(0, "0"), (1, "1")]))
       ),
       test(
         "remove singleton old",
@@ -237,7 +241,7 @@ run(
           ignore HashMap.remove(map, HashMap.nat, 1);
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "0")]))
+        M.equals(T.array(entryTestable, [(0, "0")]))
       ),
       test(
         "remove singleton old",
@@ -255,7 +259,7 @@ run(
           assert HashMap.remove(map, HashMap.nat, 1) == null;
           sortedEntries(map)
         },
-        M.equals(T.array<(Nat, Text)>(entryTestable, [(0, "0")]))
+        M.equals(T.array(entryTestable, [(0, "0")]))
       ),
       test(
         "take function result",
@@ -377,21 +381,21 @@ run(
     [
       test(
         "size",
-        HashMap.size<Nat, Text>(smallMap()),
+        HashMap.size(smallMap()),
         M.equals(T.nat(smallSize))
       ),
       test(
         "is empty",
-        HashMap.isEmpty<Nat, Text>(smallMap()),
+        HashMap.isEmpty(smallMap()),
         M.equals(T.bool(false))
       ),
       test(
         "iterate forward",
         sortedEntries(smallMap()),
         M.equals(
-          T.array<(Nat, Text)>(
+          T.array(
             entryTestable,
-            Array.tabulate<(Nat, Text)>(smallSize, func(index) { (index, Nat.toText(index)) })
+            Array.tabulate(smallSize, func(index) { (index, Nat.toText(index)) })
           )
         )
       ),

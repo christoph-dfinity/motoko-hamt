@@ -325,7 +325,7 @@ module {
   func insertArray<A>(as : [A], a : A, ix : Nat) : [A] {
     Array.tabulate(
       as.size() + 1,
-      func(i : Nat) : A {
+      func(i) {
         if (i < ix) { as[i] }
         else if (i == ix) { a }
         else { as[i - 1] };
@@ -336,18 +336,14 @@ module {
   func replaceArray<A>(as : [A], a : A, ix : Nat) : [A] {
     Array.tabulate(
       as.size(),
-      func(i : Nat) : A {
-        if (i == ix) { a } else { as[i] };
-      },
+      func(i) { if (i == ix) { a } else { as[i] } },
     );
   };
 
   func removeArray<A>(as : [A], ix : Nat) : [A] {
     Array.tabulate(
       (as.size() - 1 : Nat),
-      func(i : Nat) : A {
-        if (i < ix) { as[i] } else { as[i + 1] };
-      },
+      func(i) { if (i < ix) { as[i] } else { as[i + 1] } },
     );
   };
 };

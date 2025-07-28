@@ -164,7 +164,7 @@ module {
   public func insert<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K, value : V) : ?V {
     let hashed = hashFn.0(map.seed, key);
     var previous : ?V = null;
-    Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
+    Hamt.upsert(map.hamt, hashed, func (prev) {
       switch (prev) {
         case null {
           { var items = [var (key, value)] }
@@ -323,7 +323,7 @@ module {
   /// }
   /// ```
   public func keys<K, V>(map : HashMap<K, V>) : Iter.Iter<K> {
-    Iter.map(entries(map), func (e : (K, V)) : K = e.0);
+    Iter.map(entries(map), func (e) = e.0);
   };
 
   /// Returns an iterator over the values in the map, traversing the entries in arbitary order.
@@ -345,7 +345,7 @@ module {
   /// }
   /// ```
   public func values<K, V>(map : HashMap<K, V>) : Iter.Iter<V> {
-    Iter.map(entries(map), func (e : (K, V)) : V = e.1);
+    Iter.map(entries(map), func e = e.1);
   };
 
   /// Determines whether a key-value map is empty.
@@ -400,7 +400,7 @@ module {
         };
         i += 1;
       };
-      b.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) b.items[i] else (key, value));
+      b.items := VarArray.tabulate(size + 1, func i = if (i != size) b.items[i] else (key, value));
       null
     };
 
@@ -423,7 +423,7 @@ module {
       while (i < size) {
         let (k, v) = b.items[i];
         if (eq(k, key)) {
-          b.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
+          b.items := VarArray.tabulate(size - 1 : Nat, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
           return ?v
         };
         i += 1;

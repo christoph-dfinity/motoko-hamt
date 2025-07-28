@@ -1,6 +1,6 @@
 [package]
 name = "hamt"
-version = "1.1.0"
+version = "1.1.1"
 description = "Hash Array Mapped Tries for Motoko"
 repository = "https://github.com/christoph-dfinity/motoko-hamt"
 keywords = [ "data-structure", "hashmap" ]
@@ -14,7 +14,7 @@ siphash = "1.0.0"
 bench = "1.0.0"
 matchers = "https://github.com/kritzcreek/motoko-matchers#3dac8a071b69e4e651b25a7d9683fe831eb7cffd@3dac8a071b69e4e651b25a7d9683fe831eb7cffd"
 hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828eee3064d939a3259eab78@94d509f97d70ac03828eee3064d939a3259eab78"
-base = "0.14.14" # For benchmarking against old base structures
+base = "0.14.14"
 
 [toolchain]
 moc = "0.14.14"

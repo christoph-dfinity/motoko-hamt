@@ -121,7 +121,7 @@ module {
 
   public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
     var previous : ?A = null;
-    upsert(hamt, hash, func (prev : ?A) : A {
+    upsert(hamt, hash, func (prev) {
       previous := prev;
       value
     });
@@ -379,7 +379,7 @@ module {
   func insertVarArray<A>(as : [var A], a : A, ix : Nat) : [var A] {
     VarArray.tabulate(
       as.size() + 1,
-      func(i : Nat) : A {
+      func (i) {
         if (i < ix) { as[i] }
         else if (i == ix) { a }
         else { as[i - 1] };
@@ -390,9 +390,7 @@ module {
   func removeVarArray<A>(as : [var A], ix : Nat) : [var A] {
     VarArray.tabulate(
       (as.size() - 1 : Nat),
-      func(i : Nat) : A {
-        if (i < ix) { as[i] } else { as[i + 1] };
-      },
+      func (i) { if (i < ix) { as[i] } else { as[i + 1] } }
     );
   };
 };

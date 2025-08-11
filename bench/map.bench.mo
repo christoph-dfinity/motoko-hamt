@@ -3,7 +3,7 @@ import Hashtable "mo:hashmap/Map";
 import Sip13 "mo:siphash/Sip13";
 
 import HashMap "../src/HashMap";
-import PureHamt "../src/pure/Hamt";
+import PureHashMap "../src/pure/HashMap";
 
 import Blob "mo:core/Blob";
 import Map "mo:core/Map";
@@ -104,19 +104,18 @@ module {
       };
 
       if (row == "hamt/pure/HashMap") {
-        let seed : (Nat64, Nat64) = (0, 0);
-        var map = PureHamt.new<Nat>();
+        var map : PureHashMap.HashMap<Blob, Nat> = PureHashMap.empty((0 : Nat64, 0 : Nat64));
         for (i in Nat.range(1, n)) {
-          map := PureHamt.add(map, Sip13.hashBlob(seed, blob(i)), i);
+          map := PureHashMap.add(map, PureHashMap.blob, blob(i), i);
         };
+
         for (i in Nat.range(1, n)) {
-          ignore PureHamt.get(map, Sip13.hashBlob(seed, blob(i)));
-          ignore PureHamt.get(map, Sip13.hashBlob(seed, blobWrong(i)));
+          ignore PureHashMap.get(map, PureHashMap.blob, blob(i));
+          ignore PureHashMap.get(map, PureHashMap.blob, blobWrong(i));
         };
 
         for (i in Nat.range(n + 1, n + n)) {
-          let (newMap, _) = PureHamt.remove(map, Sip13.hashBlob(seed, blob(i)));
-          map := newMap;
+          map := PureHashMap.delete(map, PureHashMap.blob, blob(i));
         };
       };
 

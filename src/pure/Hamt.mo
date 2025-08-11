@@ -90,6 +90,10 @@ module {
     size = 0;
   };
 
+  public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
+    add(new(), hash, value);
+  };
+
   public func size<A>(hamt : Hamt<A>) : Nat {
     hamt.size;
   };
@@ -104,31 +108,35 @@ module {
   };
 
   public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
-    let (newRoot, replaced) = addMapped(hamt.root, 0, hash, value);
+    upsert<A>(hamt, hash, func _ { value })
+  };
+
+  public func upsert<A>(hamt : Hamt<A>, hash : Hash, f : ?A -> A) : (Hamt<A>, ?A) {
+    let (newRoot, replaced) = upsertMapped(hamt.root, 0, hash, f);
     let newSize = if (Option.isSome(replaced)) { hamt.size } else { hamt.size + 1 };
     ({ root = newRoot; size = newSize }, replaced);
   };
 
-  public func addMapped<A>(anchor : Bitmapped<A>, shift : Nat, hash : Hash, value : A) : (Bitmapped<A>, ?A) {
+  public func upsertMapped<A>(anchor : Bitmapped<A>, shift : Nat, hash : Hash, f : ?A -> A) : (Bitmapped<A>, ?A) {
     let pos = bitpos(hash, shift);
     let ix = index(anchor.bitmap, pos);
     if ((anchor.bitmap & pos) == 0) {
       return ({ anchor with
         bitmap = anchor.bitmap | pos;
-        nodes = insertArray(anchor.nodes, #leaf((hash, value)), ix)
+        nodes = insertArray(anchor.nodes, #leaf((hash, f(null))), ix)
       }, null)
     };
     switch (anchor.nodes[ix]) {
       case (#leaf(l)) {
         let (newNode : Node<A>, replaced) = if (l.0 == hash) {
-          (#leaf(hash, value), ?l.1)
+          (#leaf(hash, f(?l.1)), ?l.1)
         } else {
-          (#bitMapped(mergeLeafs(shift + BITS_PER_LEVEL, l, hash, value)), null)
+          (#bitMapped(mergeLeafs(shift + BITS_PER_LEVEL, l, hash, f(null))), null)
         };
         ({ anchor with nodes = replaceArray(anchor.nodes, newNode, ix) }, replaced)
       };
       case (#bitMapped(bm)) {
-        let (newNode, replaced) = addMapped(bm, shift + BITS_PER_LEVEL, hash, value);
+        let (newNode, replaced) = upsertMapped(bm, shift + BITS_PER_LEVEL, hash, f);
         ({ anchor with nodes = replaceArray(anchor.nodes, #bitMapped(newNode), ix) }, replaced)
       }
     };
@@ -278,7 +286,7 @@ module {
     var stack : Stack.Stack<NodeCursor<A>>;
   };
 
-  public func iter<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
+  public func entries<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
     let state : IterState<A> = { var stack = Stack.singleton({ node = hamt.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {

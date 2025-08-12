@@ -246,7 +246,7 @@ module {
   func removeRec<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
     let pos = bitpos(hash, shift);
     if ((pos & anchor.bitmap) == 0) {
-      return #notFound;
+      #notFound;
     } else {
       let ix = index(anchor.bitmap, pos);
       switch (anchor.nodes[ix]) {

@@ -1,5 +1,5 @@
-import Debug "mo:core/Debug";
 import Hamt "../src/Hamt";
+import HamtTest "Hamt";
 import Hasher "mo:siphash/Hasher";
 import M "mo:matchers/Matchers";
 import Nat "mo:core/Nat";
@@ -43,11 +43,8 @@ let suite = S.suite("HAMT", [
     let hamt = Hamt.new<Nat>();
     ignore Hamt.insert(hamt, (0 : Nat64), 0);
     ignore Hamt.insert(hamt, (64 : Nat64), 64);
-    Debug.print(Hamt.showStructure(hamt));
     let removed = Hamt.remove(hamt, (0 : Nat64));
-    Debug.print(Hamt.showStructure(hamt));
     let removed2 = Hamt.remove(hamt, (64 : Nat64));
-    Debug.print(Hamt.showStructure(hamt));
     removed;
   }, M.equals(T.optional(T.natTestable, (?0 : ?Nat)))),
   S.test("full on", do {
@@ -59,15 +56,13 @@ let suite = S.suite("HAMT", [
     var sum : Nat = 0;
     for (i in Nat.range(1, 100)) {
       let ?res = Hamt.get(hamt, natHash(i)) else {
-        Debug.print("failed to find: " # debug_show i);
-        Runtime.trap("args");
+        Runtime.trap("failed to find: " # debug_show i);
       };
       sum += res;
     };
     for (i in Nat.range(101, 200)) {
       let null = Hamt.get(hamt, natHash(i)) else {
-        Debug.print("found: " # debug_show i);
-        Runtime.trap("args");
+        Runtime.trap("failed to find: " # debug_show i);
       };
     };
     sum
@@ -97,3 +92,4 @@ let suitePure = S.suite("pure/HAMT", [
 
 S.run(suite);
 S.run(suitePure);
+S.run(HamtTest.suite());

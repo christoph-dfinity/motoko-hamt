@@ -17,5 +17,5 @@ hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828ee
 base = "0.14.14"
 
 [toolchain]
-moc = "0.14.14"
+moc = "0.16.0"
 wasmtime = "21.0.0"

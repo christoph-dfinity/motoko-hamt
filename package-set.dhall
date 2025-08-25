@@ -8,9 +8,9 @@ let
   additions =
     [
       { name = "siphash"
-      , version = "1.0.0"
+      , version = "1.0.2"
       , repo = "https://github.com/christoph-dfinity/motoko-siphash"
-      , dependencies = ["base"] : List Text
+      , dependencies = ["core"] : List Text
       },
       { name = "bench"
       , version = "d4ce879cf251a27fa7167b523eee622baca42a53"
@@ -28,7 +28,7 @@ let
       , dependencies = [] : List Text
       },
       { name = "core"
-      , version = "preview-0.5.0"
+      , version = "v1.0.0"
       , repo = "https://github.com/dfinity/motoko-core"
       , dependencies = [] : List Text
       },

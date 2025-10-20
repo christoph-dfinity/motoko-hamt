@@ -31,7 +31,7 @@ module {
       S.test("inserts values",
         do {
           let map = Hamt.singleton<Nat>(natHash(1), 2);
-          ignore Hamt.insert(map, natHash(2), 3);
+          ignore map.insert(natHash(2), 3);
           map
         },
         M.allOf([hasEntry(1, 2), hasEntry(2, 3)])
@@ -40,7 +40,7 @@ module {
         do {
           let map : Hamt<Nat> = Hamt.new();
           for (i in Nat.range(0, 10_000)) {
-            ignore Hamt.insert(map, natHash(i), i);
+            ignore map.insert(natHash(i), i);
           };
           map
         }, do {

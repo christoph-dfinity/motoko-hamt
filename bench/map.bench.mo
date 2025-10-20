@@ -15,6 +15,8 @@ import OldHashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Trie "mo:base/Trie";
 
+import { type Seed; type HashFn; Blob = N } "../src/Types";
+
 module {
   public func init() : Bench.Bench {
     func sip32Blob(b : Blob) : Nat32 {
@@ -60,16 +62,16 @@ module {
       if (row == "hamt/HashMap") {
         let map : HashMap.HashMap<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
         for (i in Nat.range(1, n)) {
-          ignore HashMap.insert(map, HashMap.blob, blob(i), i);
+          ignore map.insert(blob(i), i);
         };
 
         for (i in Nat.range(1, n)) {
-          ignore HashMap.get(map, HashMap.blob, blob(i));
-          ignore HashMap.get(map, HashMap.blob, blobWrong(i));
+          ignore map.get(blob(i));
+          ignore map.get(blobWrong(i));
         };
 
         for (i in Nat.range(n + 1, n + n)) {
-          ignore HashMap.remove(map, HashMap.blob, blob(i));
+          ignore map.remove(blob(i));
         };
       };
 
@@ -106,16 +108,16 @@ module {
       if (row == "hamt/pure/HashMap") {
         var map : PureHashMap.HashMap<Blob, Nat> = PureHashMap.empty((0 : Nat64, 0 : Nat64));
         for (i in Nat.range(1, n)) {
-          map := PureHashMap.add(map, PureHashMap.blob, blob(i), i);
+          map := map.add(blob(i), i);
         };
 
         for (i in Nat.range(1, n)) {
-          ignore PureHashMap.get(map, PureHashMap.blob, blob(i));
-          ignore PureHashMap.get(map, PureHashMap.blob, blobWrong(i));
+          ignore map.get(blob(i));
+          ignore map.get(blobWrong(i));
         };
 
         for (i in Nat.range(n + 1, n + n)) {
-          map := PureHashMap.delete(map, PureHashMap.blob, blob(i));
+          map := map.delete(blob(i));
         };
       };
 

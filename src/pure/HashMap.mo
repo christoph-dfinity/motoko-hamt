@@ -3,16 +3,10 @@
 // TODO: Implement equals
 
 import Array "mo:core/Array";
-import Blob "mo:core/Blob";
 import Hamt "Hamt";
-import Int "mo:core/Int";
 import Iter "mo:core/Iter";
-import Nat "mo:core/Nat";
-import Nat64 "mo:core/Nat64";
 import Option "mo:core/Option";
-import Principal "mo:core/Principal";
-import Sip13 "mo:siphash/Sip13";
-import Text "mo:core/Text";
+import { type Seed; type HashFn } "../Types";
 
 module {
   /// An immutable persistent key-value hash map.
@@ -51,32 +45,7 @@ module {
     size : Nat;
     seed : Seed;
   };
-
-  /// The provided hashing functions will use this seed to produce HashDoS resistant hashes.
-  /// Needs to be sourced from secure randomness
-  public type Seed = (Nat64, Nat64);
-
-  /// Holds both a hash and equality function for the HashMap's key type
-  public type HashFn<K> = (
-    hash : (Seed, K) -> Nat64,
-    eq : (K, K) -> Bool
-  );
-
-  /// A hashing function for Blob
-  public let blob : HashFn<Blob> = (Sip13.hashBlob, Blob.equal);
-
-  /// A hashing function for Text
-  public let text : HashFn<Text> = (Sip13.hashText, Text.equal);
-
-  /// A hashing function for Nat
-  public let nat : HashFn<Nat> = (Sip13.hashNat, Nat.equal);
-
-  /// A hashing function for Int
-  public let int : HashFn<Int> = (Sip13.hashInt, Int.equal);
-
-  /// A hashing function for Principals
-  public let principal : HashFn<Principal> =
-    (func (s, p) = Sip13.hashBlob(s, Principal.toBlob(p)), Principal.equal);
+  public type Self<K, V> = HashMap<K, V>;
 
   /// The empty HashMap.
   ///
@@ -107,7 +76,7 @@ module {
   ///   assert Iter.toArray(HashMap.entries(map)) == [(0, "Zero")];
   /// }
   /// ```
-  public func singleton<K, V>(seed : Seed, hashFn : HashFn<K>, key : K, value : V) : HashMap<K, V> {
+  public func singleton<K, V>(seed : Seed, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
     let hashed = hashFn.0(seed, key);
     { hamt = Hamt.singleton(hashed, [(key, value)]); size = 1; seed };
   };
@@ -125,14 +94,14 @@ module {
   ///     Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]);
   ///
   ///   let seed : HashMap.Seed = (0, 0);
-  ///   let map = HashMap.fromIter<Nat, Text>(seed, HashMap.nat, iter);
+  ///   let map = HashMap.fromIter<Nat, Text>(iter, seed, HashMap.nat);
   ///
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Zero";
   ///   assert HashMap.get(map, HashMap.nat, 1) == ?"One";
   ///   assert HashMap.get(map, HashMap.nat, 2) == ?"Two";
   /// }
   /// ```
-  public func fromIter<K, V>(seed : Seed, hashFn : HashFn<K>, iter : Iter.Iter<(K, V)>) : HashMap<K, V> {
+  public func fromIter<K, V>(seed : Seed, hashFn : (implicit : HashFn<K>), iter : Iter.Iter<(K, V)>) : HashMap<K, V> {
     // TODO: build mutably and then freeze
     var map : HashMap<K, V> = empty(seed);
     for ((k, v) in iter) {
@@ -166,7 +135,7 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func insert<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K, value : V) : (HashMap<K, V>, ?V) {
+  public func insert<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : (HashMap<K, V>, ?V) {
     let hashed = hashFn.0(map.seed, key);
     var previous : ?V = null;
     let (newMap, _) = Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
@@ -204,7 +173,7 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func add<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K, value : V) : HashMap<K, V> {
+  public func add<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
     insert(map, hashFn, key, value).0
   };
 
@@ -217,15 +186,15 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
+  ///     [(0, "Zero"), (1, "One"), (2, "Two")].values(),
   ///     seed, HashMap.nat,
-  ///     [(0, "Zero"), (1, "One"), (2, "Two")].values()
   ///   );
   ///
   ///   assert HashMap.get(map, HashMap.nat, 1) == ?"One";
   ///   assert HashMap.get(map, HashMap.nat, 3) == null;
   /// }
   /// ```
-  public func get<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : ?V {
+  public func get<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
     let hashed = hashFn.0(map.seed, key);
     let ?bucket = Hamt.get(map.hamt, hashed) else return null;
     Bucket.get(bucket, hashFn.1, key)
@@ -241,8 +210,8 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed, HashMap.nat,
   ///   );
   ///
   ///   let (map1, removed1) HashMap.remove(map, HashMap.nat, 1);
@@ -254,7 +223,7 @@ module {
   ///   assert HashMap.size(map2) == 2;
   /// }
   /// ```
-  public func remove<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : (HashMap<K, V>, ?V) {
+  public func remove<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : (HashMap<K, V>, ?V) {
     let hashed = hashFn.0(map.seed, key);
     let (newHamt, ?bucket) = Hamt.remove(map.hamt, hashed) else { return (map, null) };
     switch (Bucket.remove(bucket, hashFn.1, key)) {
@@ -270,7 +239,7 @@ module {
     };
   };
 
-  public func delete<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : HashMap<K, V> {
+  public func delete<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : HashMap<K, V> {
     remove(map, hashFn, key).0
   };
 
@@ -283,15 +252,15 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed, HashMap.nat,
   ///   );
   ///
   ///   assert HashMap.containsKey(map, HashMap.nat, 1);
   ///   assert not Map.containsKey(map, HashMap.nat, 3);
   /// }
   /// ```
-  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : Bool {
+  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : Bool {
     get(map, hashFn, key) |> Option.isSome(_);
   };
 
@@ -306,8 +275,8 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed, HashMap.nat,
   ///   );
   ///
   ///   for ((key, value) in HashMap.entries(map)) {
@@ -348,8 +317,8 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed, HashMap.nat,
   ///   );
   ///
   ///   for (key in HashMap.keys(map)) {
@@ -370,8 +339,8 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed, HashMap.nat,
   ///   );
   ///
   ///   for (value in HashMap.values(map)) {

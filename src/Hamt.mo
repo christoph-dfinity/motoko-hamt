@@ -84,6 +84,8 @@ module {
     var size : Nat;
   };
 
+  public type Self<A> = Hamt<A>;
+
   public func new<A>() : Hamt<A> = {
     var root = {
       var bitmap = 0;
@@ -329,24 +331,24 @@ module {
     };
   };
 
-  public func equals<A>(left : Hamt<A>, right : Hamt<A>, equals : (A, A) -> Bool) : Bool {
+  public func equal<A>(left : Hamt<A>, right : Hamt<A>, equal : (A, A) -> Bool) : Bool {
     if (left.size != right.size) { return false };
-    equalsRec(left.root, right.root, equals)
+    equalRec(left.root, right.root, equal)
   };
 
-  func equalsRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equals : (A, A) -> Bool) : Bool {
+  func equalRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
     if (left.bitmap != right.bitmap) { return false };
     var i : Nat = 0;
     let size : Nat = left.nodes.size();
     while (i < size) {
       switch (left.nodes[i], right.nodes[i]) {
         case (#leaf(lh, lv), #leaf(rh, rv)) {
-          if (lh != rh or not equals(lv, rv)) {
+          if (lh != rh or not equal(lv, rv)) {
             return false
           };
         };
         case (#bitMapped(l), #bitMapped(r)) {
-          if (not equalsRec(l, r, equals)) {
+          if (not equalRec(l, r, equal)) {
             return false
           }
         };

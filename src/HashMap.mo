@@ -1,18 +1,11 @@
 /// Imperative Key-Value HashMaps
 
-// TODO: Implement equals
-
-import Blob "mo:core/Blob";
 import Hamt "Hamt";
-import Int "mo:core/Int";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
-import Nat64 "mo:core/Nat64";
 import Option "mo:core/Option";
-import Principal "mo:core/Principal";
-import Sip13 "mo:siphash/Sip13";
-import Text "mo:core/Text";
 import VarArray "mo:core/VarArray";
+import { type Seed; type HashFn } "Types";
 
 module {
   /// An imperative key-value hash map.
@@ -52,31 +45,7 @@ module {
     seed : Seed;
   };
 
-  /// The provided hashing functions will use this seed to produce HashDoS resistant hashes.
-  /// Needs to be sourced from secure randomness
-  public type Seed = (Nat64, Nat64);
-
-  /// Holds both a hash and equality function for the HashMap's key type
-  public type HashFn<K> = (
-    hash : (Seed, K) -> Nat64,
-    eq : (K, K) -> Bool
-  );
-
-  /// A hashing function for Blob
-  public let blob : HashFn<Blob> = (Sip13.hashBlob, Blob.equal);
-
-  /// A hashing function for Text
-  public let text : HashFn<Text> = (Sip13.hashText, Text.equal);
-
-  /// A hashing function for Nat
-  public let nat : HashFn<Nat> = (Sip13.hashNat, Nat.equal);
-
-  /// A hashing function for Int
-  public let int : HashFn<Int> = (Sip13.hashInt, Int.equal);
-
-  /// A hashing function for Principals
-  public let principal : HashFn<Principal> =
-    (func (s, p) = Sip13.hashBlob(s, Principal.toBlob(p)), Principal.equal);
+  public type Self<K, V> = HashMap<K, V>;
 
   /// Create a new empty mutable HashMap.
   ///
@@ -107,7 +76,7 @@ module {
   ///   assert Iter.toArray(HashMap.entries(map)) == [(0, "Zero")];
   /// }
   /// ```
-  public func singleton<K, V>(seed : Seed, hashFn : HashFn<K>, key : K, value : V) : HashMap<K, V> {
+  public func singleton<K, V>(seed : Seed, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
     let hashed = hashFn.0(seed, key);
     { hamt = Hamt.singleton(hashed, { var items = [var (key, value)] }); var size = 1; seed };
   };
@@ -132,7 +101,7 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 2) == ?"Two";
   /// }
   /// ```
-  public func fromIter<K, V>(seed : Seed, hashFn : HashFn<K>, iter : Iter.Iter<(K, V)>) : HashMap<K, V> {
+  public func fromIter<K, V>(iter : Iter.Iter<(K, V)>, seed : Seed, hashFn : (implicit : HashFn<K>)) : HashMap<K, V> {
     let map : HashMap<K, V> = new(seed);
     for ((k, v) in iter) {
       ignore insert(map, hashFn, k, v);
@@ -161,7 +130,7 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func insert<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K, value : V) : ?V {
+  public func insert<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : ?V {
     let hashed = hashFn.0(map.seed, key);
     var previous : ?V = null;
     Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
@@ -170,7 +139,7 @@ module {
           { var items = [var (key, value)] }
         };
         case (?bucket) {
-          let replaced = Bucket.add(bucket, hashFn.1, key, value);
+          let replaced = bucket.add(hashFn.1, key, value);
           previous := replaced;
           bucket
         };
@@ -199,10 +168,10 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 3) == null;
   /// }
   /// ```
-  public func get<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : ?V {
+  public func get<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
     let hashed = hashFn.0(map.seed, key);
-    let ?bucket = Hamt.get(map.hamt, hashed) else return null;
-    Bucket.get(bucket, hashFn.1, key)
+    let ?bucket = map.hamt.get(hashed) else return null;
+    bucket.get(hashFn.1, key)
   };
 
   /// Delete an entry by its key in the map.
@@ -226,12 +195,12 @@ module {
   ///   assert HashMap.size(map) == 2;
   /// }
   /// ```
-  public func remove<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : ?V {
+  public func remove<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
     let hashed = hashFn.0(map.seed, key);
-    let ?bucket = Hamt.remove(map.hamt, hashed) else return null;
-    let removed = Bucket.remove(bucket, hashFn.1, key);
+    let ?bucket = map.hamt.remove(hashed) else return null;
+    let removed = bucket.remove(hashFn.1, key);
     if (not (bucket.items.size() == 0)) {
-      ignore Hamt.insert(map.hamt, hashed, bucket)
+      ignore map.hamt.insert(hashed, bucket)
     };
     if (Option.isSome(removed)) {
       map.size -= 1;
@@ -256,7 +225,7 @@ module {
   ///   assert not Map.containsKey(map, HashMap.nat, 3);
   /// }
   /// ```
-  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : HashFn<K>, key : K) : Bool {
+  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : Bool {
     get(map, hashFn, key) |> Option.isSome(_);
   };
 
@@ -281,7 +250,7 @@ module {
   /// }
   /// ```
   public func entries<K, V>(map : HashMap<K, V>) : Iter.Iter<(K, V)> {
-    let inner = Hamt.entries(map.hamt);
+    let inner = map.hamt.entries();
     let ?(_, initialBucket) = inner.next() else {
       return Iter.empty()
     };
@@ -384,10 +353,16 @@ module {
     map.size
   };
 
+  public func equal<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), other : HashMap<K, V>, equal : (implicit : (V, V) -> Bool)) : Bool {
+    Hamt.equal(self.hamt, other.hamt, func(l, r) { Bucket.equal(l, r, hashFn.1, equal) })
+  };
+
   module Bucket {
     public type T<K, V> = {
       var items : [var (K, V)];
     };
+
+    public type Self<K, V> = T<K, V>;
 
     public func add<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K, value : V) : ?V {
       var i : Nat = 0;
@@ -429,6 +404,21 @@ module {
         i += 1;
       };
       null
+    };
+
+    public func equal<K, V>(self : T<K, V>, other : T<K, V>, eqK : (K, K) -> Bool, eqV : (V, V) -> Bool) : Bool {
+      if (self.items.size() != other.items.size()) {
+        return false
+      };
+      label outer for ((ks, vs) in self.items.values()) {
+        for ((ko, vo) in other.items.values()) {
+          if (eqK(ks, ko) and eqV(vs, vo)) {
+            continue outer;
+          };
+        };
+        return false
+      };
+      true;
     };
   };
 }

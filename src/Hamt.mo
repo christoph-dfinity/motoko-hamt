@@ -84,8 +84,6 @@ module {
     var size : Nat;
   };
 
-  public type Self<A> = Hamt<A>;
-
   public func new<A>() : Hamt<A> = {
     var root = {
       var bitmap = 0;

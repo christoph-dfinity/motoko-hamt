@@ -45,7 +45,6 @@ module {
     size : Nat;
     seed : Seed;
   };
-  public type Self<K, V> = HashMap<K, V>;
 
   /// The empty HashMap.
   ///
@@ -135,10 +134,10 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func insert<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : (HashMap<K, V>, ?V) {
-    let hashed = hashFn.0(map.seed, key);
+  public func insert<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : (HashMap<K, V>, ?V) {
+    let hashed = hashFn.0(self.seed, key);
     var previous : ?V = null;
-    let (newMap, _) = Hamt.upsert(map.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
+    let (newMap, _) = Hamt.upsert(self.hamt, hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
       switch (prev) {
         case null [(key, value)];
         case (?bucket) {
@@ -149,11 +148,11 @@ module {
       }
     });
     let size = if (Option.isNull(previous)) {
-      map.size + 1;
+      self.size + 1;
     } else {
-      map.size
+      self.size
     };
-    ({ hamt = newMap; size; seed = map.seed }, previous)
+    ({ hamt = newMap; size; seed = self.seed }, previous)
   };
 
   /// Adds/replaces the value associated with `key` with `value`
@@ -173,8 +172,8 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func add<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
-    insert(map, hashFn, key, value).0
+  public func add<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
+    self.insert(hashFn, key, value).0
   };
 
   /// Get the value associated with key in the given map if present and `null` otherwise.
@@ -194,9 +193,9 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 3) == null;
   /// }
   /// ```
-  public func get<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
-    let hashed = hashFn.0(map.seed, key);
-    let ?bucket = Hamt.get(map.hamt, hashed) else return null;
+  public func get<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
+    let hashed = hashFn.0(self.seed, key);
+    let ?bucket = Hamt.get(self.hamt, hashed) else return null;
     Bucket.get(bucket, hashFn.1, key)
   };
 
@@ -223,24 +222,24 @@ module {
   ///   assert HashMap.size(map2) == 2;
   /// }
   /// ```
-  public func remove<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : (HashMap<K, V>, ?V) {
-    let hashed = hashFn.0(map.seed, key);
-    let (newHamt, ?bucket) = Hamt.remove(map.hamt, hashed) else { return (map, null) };
+  public func remove<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : (HashMap<K, V>, ?V) {
+    let hashed = hashFn.0(self.seed, key);
+    let (newHamt, ?bucket) = Hamt.remove(self.hamt, hashed) else { return (self, null) };
     switch (Bucket.remove(bucket, hashFn.1, key)) {
-      case null { (map, null) };
+      case null { (self, null) };
       case (?(newBucket, removed)) {
         if (newBucket.size() == 0) {
-          ({ hamt = newHamt; size = map.size - 1; seed = map.seed }, ?removed)
+          ({ hamt = newHamt; size = self.size - 1; seed = self.seed }, ?removed)
         } else {
-          let (newHamt, _) = Hamt.insert(map.hamt, hashed, newBucket);
-          ({ hamt = newHamt; size = map.size - 1; seed = map.seed }, ?removed)
+          let (newHamt, _) = Hamt.insert(self.hamt, hashed, newBucket);
+          ({ hamt = newHamt; size = self.size - 1; seed = self.seed }, ?removed)
         }
       }
     };
   };
 
-  public func delete<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : HashMap<K, V> {
-    remove(map, hashFn, key).0
+  public func delete<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : HashMap<K, V> {
+    self.remove(hashFn, key).0
   };
 
   /// Tests whether the map contains the provided key.
@@ -260,8 +259,8 @@ module {
   ///   assert not Map.containsKey(map, HashMap.nat, 3);
   /// }
   /// ```
-  public func containsKey<K, V>(map : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : Bool {
-    get(map, hashFn, key) |> Option.isSome(_);
+  public func containsKey<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : Bool {
+    self.get(key) |> Option.isSome(_)
   };
 
   /// Returns an iterator over the key-value pairs in the map,
@@ -284,8 +283,8 @@ module {
   ///   }
   /// }
   /// ```
-  public func entries<K, V>(map : HashMap<K, V>) : Iter.Iter<(K, V)> {
-    let inner = Hamt.entries(map.hamt);
+  public func entries<K, V>(self : HashMap<K, V>) : Iter.Iter<(K, V)> {
+    let inner = Hamt.entries(self.hamt);
     let ?(_, initialBucket) = inner.next() else {
       return Iter.empty()
     };
@@ -326,8 +325,8 @@ module {
   ///   }
   /// }
   /// ```
-  public func keys<K, V>(map : HashMap<K, V>) : Iter.Iter<K> {
-    Iter.map(entries(map), func (e : (K, V)) : K = e.0);
+  public func keys<K, V>(self : HashMap<K, V>) : Iter.Iter<K> {
+    Iter.map(entries(self), func (e : (K, V)) : K = e.0);
   };
 
   /// Returns an iterator over the values in the map, traversing the entries in arbitary order.
@@ -348,8 +347,8 @@ module {
   ///   }
   /// }
   /// ```
-  public func values<K, V>(map : HashMap<K, V>) : Iter.Iter<V> {
-    Iter.map(entries(map), func (e : (K, V)) : V = e.1);
+  public func values<K, V>(self : HashMap<K, V>) : Iter.Iter<V> {
+    Iter.map(entries(self), func (e : (K, V)) : V = e.1);
   };
 
   /// Determines whether a key-value map is empty.
@@ -366,8 +365,8 @@ module {
   ///   assert not HashMap.isEmpty(map);
   /// }
   /// ```
-  public func isEmpty<K, V>(map : HashMap<K, V>) : Bool {
-    map.size == 0
+  public func isEmpty<K, V>(self : HashMap<K, V>) : Bool {
+    self.size == 0
   };
 
   /// Return the number of entries in a key-value map.
@@ -384,8 +383,8 @@ module {
   ///   assert HashMap.size(map) == 1;
   /// }
   /// ```
-  public func size<K, V>(map : HashMap<K, V>) : Nat {
-    map.size
+  public func size<K, V>(self : HashMap<K, V>) : Nat {
+    self.size
   };
 
   module Bucket {

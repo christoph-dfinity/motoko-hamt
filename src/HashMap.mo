@@ -364,26 +364,26 @@ module {
 
     public type Self<K, V> = T<K, V>;
 
-    public func add<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K, value : V) : ?V {
+    public func add<K, V>(self : T<K, V>, eq : (K, K) -> Bool, key : K, value : V) : ?V {
       var i : Nat = 0;
-      let size = b.items.size();
+      let size = self.items.size();
       while (i < size) {
-        let (k, v) = b.items[i];
+        let (k, v) = self.items[i];
         if (eq(k, key)) {
-          b.items[i] := (key, value);
+          self.items[i] := (key, value);
           return ?v
         };
         i += 1;
       };
-      b.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) b.items[i] else (key, value));
+      self.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) self.items[i] else (key, value));
       null
     };
 
-    public func get<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
+    public func get<K, V>(self : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
       var i : Nat = 0;
-      let size = b.items.size();
+      let size = self.items.size();
       while (i < size) {
-        let (k, v) = b.items[i];
+        let (k, v) = self.items[i];
         if (eq(k, key)) {
           return ?v
         };
@@ -392,13 +392,13 @@ module {
       null
     };
 
-    public func remove<K, V>(b : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
+    public func remove<K, V>(self : T<K, V>, eq : (K, K) -> Bool, key : K) : ?V {
       var i : Nat = 0;
-      let size = b.items.size();
+      let size = self.items.size();
       while (i < size) {
-        let (k, v) = b.items[i];
+        let (k, v) = self.items[i];
         if (eq(k, key)) {
-          b.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) b.items[ix] else b.items[ix + 1]);
+          self.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) self.items[ix] else self.items[ix + 1]);
           return ?v
         };
         i += 1;

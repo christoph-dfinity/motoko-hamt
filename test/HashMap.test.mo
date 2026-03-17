@@ -86,7 +86,7 @@ run(
         M.equals(T.optional(T.textTestable, null : ?Text))
       ),
       test(
-        "TODO: iterate forward",
+        "iterate forward",
         empty<Nat, Text>().entries().toArray(),
         M.equals(T.array<(Nat, Text)>(entryTestable, []))
       ),

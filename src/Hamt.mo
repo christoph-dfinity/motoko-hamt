@@ -60,7 +60,7 @@ module {
     showNode(#bitMapped(hamt.root));
   };
 
-  public func showStructure<A>(hamt : Hamt<A>) : Text {
+  public func showStructure<A>(self : Hamt<A>) : Text {
     let showNode = func(node : Node<A>) : Text {
       switch (node) {
         case (#leaf(h, _)) {
@@ -76,7 +76,7 @@ module {
         };
       };
     };
-    showNode(#bitMapped(hamt.root));
+    showNode(#bitMapped(self.root));
   };
 
   public type Hamt<A> = {
@@ -108,30 +108,30 @@ module {
     hamt
   };
 
-  public func clear<A>(hamt : Hamt<A>) {
-    hamt.root := {
+  public func clear<A>(self : Hamt<A>) {
+    self.root := {
       var bitmap = 0;
       var nodes = [var];
     };
-    hamt.size := 0
+    self.size := 0
   };
 
-  public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    let (_, _, #success(_, v)) = getWithAnchor(hamt.root, 0, hash) else return null;
+  public func get<A>(self : Hamt<A>, hash : Hash) : ?A {
+    let (_, _, #success(_, v)) = getWithAnchor(self.root, 0, hash) else return null;
     ?v
   };
 
-  public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : ?A {
+  public func insert<A>(self : Hamt<A>, hash : Hash, value : A) : ?A {
     var previous : ?A = null;
-    upsert(hamt, hash, func (prev : ?A) : A {
+    upsert(self, hash, func (prev : ?A) : A {
       previous := prev;
       value
     });
     previous
   };
 
-  public func upsert<A>(hamt : Hamt<A>, hash : Hash, update : ?A -> A) {
-    let (shift, anchor, result) = getWithAnchor(hamt.root, 0, hash);
+  public func upsert<A>(self : Hamt<A>, hash : Hash, update : ?A -> A) {
+    let (shift, anchor, result) = getWithAnchor(self.root, 0, hash);
     switch (result) {
       case (#success(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
@@ -143,22 +143,22 @@ module {
         let ix = index(anchor.bitmap, pos);
         let newNodes = insertVarArray(anchor.nodes, #leaf((hash, update(null))), ix);
         anchor.nodes := newNodes;
-        hamt.size += 1;
+        self.size += 1;
       };
       case (#conflict(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
         let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, update(null));
         anchor.nodes[ix] := #bitMapped(newNode);
-        hamt.size += 1;
+        self.size += 1;
       };
     }
   };
 
-  public func remove<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    switch (removeRec(hamt.root, 0, hash)) {
+  public func remove<A>(self : Hamt<A>, hash : Hash) : ?A {
+    switch (removeRec(self.root, 0, hash)) {
       case (#notFound) null;
       case (#success(l)) {
-        hamt.size -= 1;
+        self.size -= 1;
         ?l.1;
       };
       case (#gathered(_)) Runtime.trap("Must never gather the root node");
@@ -304,8 +304,8 @@ module {
   };
 
   // The underlying Hamt must not by modified while iterating
-  public func entries<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
-    let state : IterState<A> = { var stack = Stack.singleton({ node = hamt.root; var index = 0 }) };
+  public func entries<A>(self : Hamt<A>) : Iter.Iter<(Hash, A)> {
+    let state : IterState<A> = { var stack = Stack.singleton({ node = self.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {
         label outer loop {
@@ -331,9 +331,9 @@ module {
     };
   };
 
-  public func equal<A>(left : Hamt<A>, right : Hamt<A>, equal : (A, A) -> Bool) : Bool {
-    if (left.size != right.size) { return false };
-    equalRec(left.root, right.root, equal)
+  public func equal<A>(self : Hamt<A>, other : Hamt<A>, equal : (A, A) -> Bool) : Bool {
+    if (self.size != other.size) { return false };
+    equalRec(self.root, other.root, equal)
   };
 
   func equalRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
@@ -362,7 +362,7 @@ module {
   };
 
   // Exposed for testing/debugging
-  public func maxDepth<A>(hamt : Hamt<A>) : Nat {
+  public func maxDepth<A>(self : Hamt<A>) : Nat {
     let depth = func<A>(node : Node<A>) : Nat {
       switch node {
         case (#leaf(_)) 0;
@@ -375,7 +375,7 @@ module {
         };
       }
     };
-    depth(#bitMapped(hamt.root))
+    depth(#bitMapped(self.root))
   };
 
   func insertVarArray<A>(as : [var A], a : A, ix : Nat) : [var A] {

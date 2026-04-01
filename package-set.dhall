@@ -8,19 +8,19 @@ let
   additions =
     [
       { name = "siphash"
-      , version = "1.0.2"
+      , version = "1.0.3"
       , repo = "https://github.com/christoph-dfinity/motoko-siphash"
       , dependencies = ["core"] : List Text
       },
       { name = "bench"
-      , version = "d4ce879cf251a27fa7167b523eee622baca42a53"
-      , repo = "https://github.com/ZenVoich/bench"
-      , dependencies = [] : List Text
+      , version = "5660e2b17b941265b213d6cb0c49956c3a74e3cb"
+      , repo = "https://github.com/caffeinelabs/mops-bench"
+      , dependencies = ["core"] : List Text
       },
       { name = "test"
-      , version = "e87a718eba50c0c5d2bd8b52320ed3c51f67e2cf"
-      , repo = "https://github.com/ZenVoich/test"
-      , dependencies = ["base"] : List Text
+      , version = "06d7c77accb9fb08830643aa8f0e346295f6b263"
+      , repo = "https://github.com/caffeinelabs/mops-test"
+      , dependencies = ["core"] : List Text
       },
       { name = "hashmap"
       , version = "94d509f97d70ac03828eee3064d939a3259eab78"

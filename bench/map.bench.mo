@@ -3,7 +3,7 @@ import Hashtable "mo:hashmap/Map";
 import Sip13 "mo:siphash/Sip13";
 
 import HashMap "../src/HashMap";
-import PureHamt "../src/pure/Hamt";
+import PureHashMap "../src/pure/HashMap";
 
 import Blob "mo:core/Blob";
 import Map "mo:core/Map";
@@ -14,6 +14,8 @@ import PureMap "mo:core/pure/Map";
 import OldHashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Trie "mo:base/Trie";
+
+import { type Seed; Blob = N } "../src/Types";
 
 module {
   public func init() : Bench.Bench {
@@ -60,16 +62,16 @@ module {
       if (row == "hamt/HashMap") {
         let map : HashMap.HashMap<Blob, Nat> = HashMap.new((0 : Nat64, 0 : Nat64));
         for (i in Nat.range(1, n)) {
-          ignore HashMap.insert(map, HashMap.blob, blob(i), i);
+          ignore map.insert(blob(i), i);
         };
 
         for (i in Nat.range(1, n)) {
-          ignore HashMap.get(map, HashMap.blob, blob(i));
-          ignore HashMap.get(map, HashMap.blob, blobWrong(i));
+          ignore map.get(blob(i));
+          ignore map.get(blobWrong(i));
         };
 
         for (i in Nat.range(n + 1, n + n)) {
-          ignore HashMap.remove(map, HashMap.blob, blob(i));
+          ignore map.remove(blob(i));
         };
       };
 
@@ -104,19 +106,18 @@ module {
       };
 
       if (row == "hamt/pure/HashMap") {
-        let seed : (Nat64, Nat64) = (0, 0);
-        var map = PureHamt.new<Nat>();
+        var map : PureHashMap.HashMap<Blob, Nat> = PureHashMap.empty((0 : Nat64, 0 : Nat64));
         for (i in Nat.range(1, n)) {
-          map := PureHamt.add(map, Sip13.hashBlob(seed, blob(i)), i);
+          map := map.add(blob(i), i);
         };
+
         for (i in Nat.range(1, n)) {
-          ignore PureHamt.get(map, Sip13.hashBlob(seed, blob(i)));
-          ignore PureHamt.get(map, Sip13.hashBlob(seed, blobWrong(i)));
+          ignore map.get(blob(i));
+          ignore map.get(blobWrong(i));
         };
 
         for (i in Nat.range(n + 1, n + n)) {
-          let (newMap, _) = PureHamt.remove(map, Sip13.hashBlob(seed, blob(i)));
-          map := newMap;
+          map := map.delete(blob(i));
         };
       };
 

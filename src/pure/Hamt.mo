@@ -1,52 +1,27 @@
 import Array "mo:core/Array";
-import Char "mo:core/Char";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
-import Nat32 "mo:core/Nat32";
 import Nat64 "mo:core/Nat64";
 import Option "mo:core/Option";
 import Runtime "mo:core/Runtime";
 import Stack "mo:core/Stack";
 import Text "mo:core/Text";
 
+import { showBinary } "../Utils";
+
 module {
+
   public type Hash = Nat64;
   public type Bitmap = Nat64;
 
   let BITS_PER_LEVEL = 6;
   let SUBKEY_MASK : Nat64 = 63;
 
-  public func showBinary(x : Hash) : Text {
-    var n = x;
-    var res = "";
-    for (i in Nat.range(0, 64)) {
-      if (i != 0 and i % BITS_PER_LEVEL == 0) res := "_" # res;
-      if (n & 1 == 1) { res := "1" # res } else { res := "0" # res };
-      n := n >> 1;
-    };
-    res;
-  };
-
-  public func showHex(x : Hash) : Text {
-    var n = x;
-    var res = "";
-    for (i in Nat.range(0, 8)) {
-      let digit = n & 15;
-      if (digit < 10) {
-        res := Nat64.toText(digit) # res;
-      } else {
-        res := Text.fromChar(Char.fromNat32(Nat32.fromNat64(digit + 87))) # res;
-      };
-      n := n >> 4;
-    };
-    res;
-  };
-
-  public func show<A>(showA : A -> Text, hamt : Hamt<A>) : Text {
+  public func toText<A>(self : Hamt<A>, toText : (implicit : A -> Text)) : Text {
     let showNode = func(node : Node<A>) : Text {
       switch (node) {
         case (#leaf(h, v)) {
-          "(#leaf " # showBinary(h) # " " # showA(v) # ")";
+          "(#leaf " # showBinary(h) # " " # toText(v) # ")";
         };
         case (#bitMapped n) {
           var res = "";
@@ -58,10 +33,10 @@ module {
         };
       };
     };
-    showNode(#bitMapped(hamt.root));
+    showNode(#bitMapped(self.root));
   };
 
-  public func showStructure<A>(hamt : Hamt<A>) : Text {
+  public func showStructure<A>(self : Hamt<A>) : Text {
     let showNode = func(node : Node<A>) : Text {
       switch (node) {
         case (#leaf(h, _)) {
@@ -77,67 +52,75 @@ module {
         };
       };
     };
-    showNode(#bitMapped(hamt.root));
+    showNode(#bitMapped(self.root));
   };
 
   public type Hamt<A> = {
     root : Bitmapped<A>;
-    size : Nat;
+    size_ : Nat;
   };
 
   public func new<A>() : Hamt<A> = {
     root = { bitmap = 0; nodes = []; };
-    size = 0;
+    size_ = 0;
   };
 
-  public func size<A>(hamt : Hamt<A>) : Nat {
-    hamt.size;
+  public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
+    add(new(), hash, value);
   };
 
-  public func get<A>(hamt : Hamt<A>, hash : Hash) : ?A {
-    let (_, _, #success(_, v)) = getWithAnchor(hamt.root, 0, hash) else return null;
+  public func size<A>(self : Hamt<A>) : Nat {
+    self.size_;
+  };
+
+  public func get<A>(self : Hamt<A>, hash : Hash) : ?A {
+    let (_, _, #success(_, v)) = self.root.getWithAnchor(0, hash) else return null;
     ?v
   };
 
-  public func add<A>(hamt : Hamt<A>, hash : Hash, value : A) : Hamt<A> {
-    insert(hamt, hash, value).0;
+  public func add<A>(self : Hamt<A>, hash : Hash, value : A) : Hamt<A> {
+    self.insert(hash, value).0;
   };
 
-  public func insert<A>(hamt : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
-    let (newRoot, replaced) = addMapped(hamt.root, 0, hash, value);
-    let newSize = if (Option.isSome(replaced)) { hamt.size } else { hamt.size + 1 };
-    ({ root = newRoot; size = newSize }, replaced);
+  public func insert<A>(self : Hamt<A>, hash : Hash, value : A) : (Hamt<A>, ?A) {
+    self.upsert(hash, func _ { value })
   };
 
-  public func addMapped<A>(anchor : Bitmapped<A>, shift : Nat, hash : Hash, value : A) : (Bitmapped<A>, ?A) {
+  public func upsert<A>(self : Hamt<A>, hash : Hash, f : ?A -> A) : (Hamt<A>, ?A) {
+    let (newRoot, replaced) = self.root.upsertMapped(0, hash, f);
+    let newSize = if (Option.isSome(replaced)) { self.size_ } else { self.size_ + 1 };
+    ({ root = newRoot; size_ = newSize }, replaced);
+  };
+
+  public func upsertMapped<A>(self : Bitmapped<A>, shift : Nat, hash : Hash, f : ?A -> A) : (Bitmapped<A>, ?A) {
     let pos = bitpos(hash, shift);
-    let ix = index(anchor.bitmap, pos);
-    if ((anchor.bitmap & pos) == 0) {
-      return ({ anchor with
-        bitmap = anchor.bitmap | pos;
-        nodes = insertArray(anchor.nodes, #leaf((hash, value)), ix)
+    let ix = index(self.bitmap, pos);
+    if ((self.bitmap & pos) == 0) {
+      return ({ self with
+        bitmap = self.bitmap | pos;
+        nodes = insertArray(self.nodes, #leaf((hash, f(null))), ix)
       }, null)
     };
-    switch (anchor.nodes[ix]) {
+    switch (self.nodes[ix]) {
       case (#leaf(l)) {
         let (newNode : Node<A>, replaced) = if (l.0 == hash) {
-          (#leaf(hash, value), ?l.1)
+          (#leaf(hash, f(?l.1)), ?l.1)
         } else {
-          (#bitMapped(mergeLeafs(shift + BITS_PER_LEVEL, l, hash, value)), null)
+          (#bitMapped(mergeLeafs(shift + BITS_PER_LEVEL, l, hash, f(null))), null)
         };
-        ({ anchor with nodes = replaceArray(anchor.nodes, newNode, ix) }, replaced)
+        ({ self with nodes = replaceArray(self.nodes, newNode, ix) }, replaced)
       };
       case (#bitMapped(bm)) {
-        let (newNode, replaced) = addMapped(bm, shift + BITS_PER_LEVEL, hash, value);
-        ({ anchor with nodes = replaceArray(anchor.nodes, #bitMapped(newNode), ix) }, replaced)
+        let (newNode, replaced) = upsertMapped(bm, shift + BITS_PER_LEVEL, hash, f);
+        ({ self with nodes = replaceArray(self.nodes, #bitMapped(newNode), ix) }, replaced)
       }
     };
   };
 
-  public func remove<A>(hamt : Hamt<A>, hash : Hash) : (Hamt<A>, ?A) {
-    switch (removeRec(hamt.root, 0, hash)) {
-      case (#notFound) (hamt, null);
-      case (#success(l)) ({ root = l.newNode; size = hamt.size - 1 }, ?l.removed.1);
+  public func remove<A>(self : Hamt<A>, hash : Hash) : (Hamt<A>, ?A) {
+    switch (self.root.removeRec(0, hash)) {
+      case (#notFound) (self, null);
+      case (#success(l)) ({ root = l.newNode; size_ = self.size_ - 1 }, ?l.removed.1);
       case (#gathered(_)) Runtime.trap("Must never gather the root node");
     };
   };
@@ -171,22 +154,22 @@ module {
     result : { #success : Leaf<A>; #conflict : Leaf<A>; #missing },
   );
 
-  func getWithAnchor<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
+  func getWithAnchor<A>(self : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
     let pos = bitpos(hash, shift);
-    if ((anchor.bitmap & pos) == 0) {
-      return (shift, anchor, #missing);
+    if ((self.bitmap & pos) == 0) {
+      return (shift, self, #missing);
     };
-    let ix = index(anchor.bitmap, pos);
-    switch (anchor.nodes[ix]) {
+    let ix = index(self.bitmap, pos);
+    switch (self.nodes[ix]) {
       case (#leaf(l)) {
         if (l.0 == hash) {
-          (shift, anchor, #success(l));
+          (shift, self, #success(l));
         } else {
-          (shift, anchor, #conflict(l));
+          (shift, self, #conflict(l));
         };
       };
       case (#bitMapped(bm)) {
-        getWithAnchor(bm, shift + BITS_PER_LEVEL, hash);
+        bm.getWithAnchor(shift + BITS_PER_LEVEL, hash);
       };
     };
   };
@@ -215,27 +198,27 @@ module {
     #gathered : { newNode : Leaf<A>; removed : Leaf<A> };
   };
 
-  func removeRec<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
+  func removeRec<A>(self : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
     let pos = bitpos(hash, shift);
-    if ((pos & anchor.bitmap) == 0) {
-      return #notFound;
+    if ((pos & self.bitmap) == 0) {
+      #notFound;
     } else {
-      let ix = index(anchor.bitmap, pos);
-      switch (anchor.nodes[ix]) {
+      let ix = index(self.bitmap, pos);
+      switch (self.nodes[ix]) {
         case (#bitMapped(n)) {
-          let result = removeRec(n, shift + BITS_PER_LEVEL, hash);
+          let result = n.removeRec(shift + BITS_PER_LEVEL, hash);
           switch (result) {
             case (#notFound) { return result };
             case (#gathered(g)) {
-              if (Nat64.bitcountNonZero(anchor.bitmap) == 1 and shift != 0) {
+              if (Nat64.bitcountNonZero(self.bitmap) == 1 and shift != 0) {
                 return result
               } else {
-                let newNode = { anchor with nodes = replaceArray(anchor.nodes, #leaf(g.newNode), ix) };
+                let newNode = { self with nodes = replaceArray(self.nodes, #leaf(g.newNode), ix) };
                 return #success({ newNode; removed = g.removed })
               };
             };
             case (#success(s)) {
-              let newNode = { anchor with nodes = replaceArray(anchor.nodes, #bitMapped(s.newNode), ix) };
+              let newNode = { self with nodes = replaceArray(self.nodes, #bitMapped(s.newNode), ix) };
               return #success({ newNode; removed = s.removed })
             };
           };
@@ -244,13 +227,13 @@ module {
           if (hash != l.0) {
             return #notFound
           };
-          let rows = Nat64.bitcountNonZero(anchor.bitmap);
+          let rows = Nat64.bitcountNonZero(self.bitmap);
           // We never gather the root node
           if (rows == 1 and shift == 0) {
             return #success({ newNode = { bitmap = 0; nodes = [] }; removed = l })
           };
           if (rows == 2) {
-            let other = if (ix == 1) { anchor.nodes[0] } else { anchor.nodes[1] };
+            let other = if (ix == 1) { self.nodes[0] } else { self.nodes[1] };
             switch (other) {
               case (#leaf(other)) {
                 // We never gather the root node
@@ -260,11 +243,11 @@ module {
               };
               case (_) {};
             };
-            let newBitmap : Bitmap = anchor.bitmap & ^pos;
+            let newBitmap : Bitmap = self.bitmap & ^pos;
             return #success({ newNode = { bitmap = newBitmap; nodes = [other] }; removed = l })
           } else {
-            let newNodes : [Node<A>] = removeArray(anchor.nodes, ix);
-            let newBitmap : Bitmap = anchor.bitmap & ^pos;
+            let newNodes : [Node<A>] = removeArray(self.nodes, ix);
+            let newBitmap : Bitmap = self.bitmap & ^pos;
             return #success({ newNode = { bitmap = newBitmap; nodes = newNodes }; removed = l })
           };
         };
@@ -278,8 +261,8 @@ module {
     var stack : Stack.Stack<NodeCursor<A>>;
   };
 
-  public func iter<A>(hamt : Hamt<A>) : Iter.Iter<(Hash, A)> {
-    let state : IterState<A> = { var stack = Stack.singleton({ node = hamt.root; var index = 0 }) };
+  public func entries<A>(self : Hamt<A>) : Iter.Iter<(Hash, A)> {
+    let state : IterState<A> = { var stack = Stack.singleton({ node = self.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {
         label outer loop {
@@ -306,7 +289,7 @@ module {
   };
 
   // Exposed for testing/debugging
-  public func maxDepth<A>(hamt : Hamt<A>) : Nat {
+  public func maxDepth<A>(self : Hamt<A>) : Nat {
     func depth<A>(node : Node<A>) : Nat {
       switch node {
         case (#leaf(_)) 0;
@@ -319,7 +302,7 @@ module {
         };
       }
     };
-    depth(#bitMapped(hamt.root))
+    depth(#bitMapped(self.root))
   };
 
   func insertArray<A>(as : [A], a : A, ix : Nat) : [A] {

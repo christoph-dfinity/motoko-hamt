@@ -7,8 +7,8 @@ keywords = [ "data-structure", "hashmap" ]
 license = "Apache-2.0"
 
 [dependencies]
-core = "0.6.0"
-siphash = "1.0.0"
+core = "2.3.1"
+siphash = "1.0.2"
 
 [dev-dependencies]
 bench = "1.0.0"
@@ -17,5 +17,5 @@ hashmap = "https://github.com/ZhenyaUsenko/motoko-hash-map#94d509f97d70ac03828ee
 base = "0.14.14"
 
 [toolchain]
-moc = "0.14.14"
-wasmtime = "21.0.0"
+moc = "1.4.0"
+wasmtime = "43.0.0"

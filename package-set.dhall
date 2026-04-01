@@ -28,7 +28,7 @@ let
       , dependencies = [] : List Text
       },
       { name = "core"
-      , version = "v2.2.0"
+      , version = "v2.3.1"
       , repo = "https://github.com/dfinity/motoko-core"
       , dependencies = [] : List Text
       },

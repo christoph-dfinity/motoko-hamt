@@ -5,7 +5,7 @@ import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
 import Option "mo:core/Option";
 import VarArray "mo:core/VarArray";
-import { type Seed; type HashFn } "Types";
+import { type Seed } "Types";
 
 module {
   /// An imperative key-value hash map.
@@ -41,7 +41,7 @@ module {
   /// [Hash Array Mapped Trie]: https://lampwww.epfl.ch/papers/idealhashtrees.pdf
   public type HashMap<K, V> = {
     hamt : Hamt.Hamt<Bucket.T<K, V>>;
-    var size : Nat;
+    var size_ : Nat;
     seed : Seed;
   };
 
@@ -58,7 +58,7 @@ module {
   /// }
   /// ```
   public func new<K, V>(seed : Seed) : HashMap<K, V> {
-    { hamt = Hamt.new(); var size = 0; seed };
+    { hamt = Hamt.new(); var size_ = 0; seed };
   };
 
   /// Create a new mutable HashMap with a single entry.
@@ -70,13 +70,13 @@ module {
   ///
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
-  ///   let map = HashMap.singleton<Nat, Text>(seed, HashMap.nat, 0, "Zero");
+  ///   let map = HashMap.singleton<Nat, Text>(seed, 0, "Zero");
   ///   assert Iter.toArray(HashMap.entries(map)) == [(0, "Zero")];
   /// }
   /// ```
-  public func singleton<K, V>(seed : Seed, hashFn : (implicit : HashFn<K>), key : K, value : V) : HashMap<K, V> {
-    let hashed = hashFn.0(seed, key);
-    { hamt = Hamt.singleton(hashed, { var items = [var (key, value)] }); var size = 1; seed };
+  public func singleton<K, V>(seed : Seed, key : K, value : V, hash : (implicit : (Seed, K) -> Nat64)) : HashMap<K, V> {
+    let hashed = hash(seed, key);
+    { hamt = Hamt.singleton(hashed, { var items = [var (key, value)] }); var size_ = 1; seed };
   };
 
   /// Create a mutable HashMap with the entries obtained from an iterator.
@@ -99,10 +99,24 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 2) == ?"Two";
   /// }
   /// ```
-  public func fromIter<K, V>(iter : Iter.Iter<(K, V)>, seed : Seed, hashFn : (implicit : HashFn<K>)) : HashMap<K, V> {
+  public func fromIter<K, V>(
+    iter : Iter.Iter<(K, V)>,
+    seed : Seed,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : HashMap<K, V> {
+    iter.toHashMap(seed)
+  };
+
+  public func toHashMap<K, V>(
+    self : Iter.Iter<(K, V)>,
+    seed : Seed,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : HashMap<K, V> {
     let map : HashMap<K, V> = new(seed);
-    for ((k, v) in iter) {
-      ignore insert(map, hashFn, k, v);
+    for ((k, v) in self) {
+      ignore insert(map, k, v);
     };
     map
   };
@@ -128,8 +142,14 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
   /// }
   /// ```
-  public func insert<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K, value : V) : ?V {
-    let hashed = hashFn.0(self.seed, key);
+  public func insert<K, V>(
+    self : HashMap<K, V>,
+    key : K,
+    value : V,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : ?V {
+    let hashed = hash(self.seed, key);
     var previous : ?V = null;
     self.hamt.upsert(hashed, func (prev : ?Bucket.T<K, V>) : Bucket.T<K, V> {
       switch (prev) {
@@ -137,14 +157,14 @@ module {
           { var items = [var (key, value)] }
         };
         case (?bucket) {
-          let replaced = bucket.add(hashFn.1, key, value);
+          let replaced = bucket.add(equal, key, value);
           previous := replaced;
           bucket
         };
       }
     });
-    if (Option.isNull(previous)) {
-      self.size += 1;
+    if (previous.isNull()) {
+      self.size_ += 1;
     };
     previous
   };
@@ -166,10 +186,16 @@ module {
   ///   assert HashMap.get(map, HashMap.nat, 3) == null;
   /// }
   /// ```
-  public func get<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
-    let hashed = hashFn.0(self.seed, key);
+  public func get<K, V>(
+    self : HashMap<K, V>,
+    key : K,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : ?V {
+    let hashed = hash(self.seed, key);
     let ?bucket = self.hamt.get(hashed) else return null;
-    bucket.get(hashFn.1, key)
+    bucket.get(equal, key)
+
   };
 
   /// Delete an entry by its key in the map.
@@ -193,15 +219,20 @@ module {
   ///   assert HashMap.size(map) == 2;
   /// }
   /// ```
-  public func remove<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : ?V {
-    let hashed = hashFn.0(self.seed, key);
+  public func remove<K, V>(
+    self : HashMap<K, V>,
+    key : K,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : ?V {
+    let hashed = hash(self.seed, key);
     let ?bucket = self.hamt.remove(hashed) else return null;
-    let removed = bucket.remove(hashFn.1, key);
+    let removed = bucket.remove(equal, key);
     if (not (bucket.items.size() == 0)) {
       ignore self.hamt.insert(hashed, bucket)
     };
-    if (Option.isSome(removed)) {
-      self.size -= 1;
+    if (removed.isSome()) {
+      self.size_ -= 1;
     };
     removed
   };
@@ -223,8 +254,13 @@ module {
   ///   assert not Map.containsKey(map, HashMap.nat, 3);
   /// }
   /// ```
-  public func containsKey<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), key : K) : Bool {
-    self.get(hashFn, key) |> Option.isSome(_);
+  public func containsKey<K, V>(
+    self : HashMap<K, V>,
+    key : K,
+    hash : (implicit : (Seed, K) -> Nat64),
+    equal : (implicit : (K, K) -> Bool),
+  ) : Bool {
+    self.get(key).isSome()
   };
 
   /// Returns an iterator over the key-value pairs in the map,
@@ -290,7 +326,7 @@ module {
   /// }
   /// ```
   public func keys<K, V>(self : HashMap<K, V>) : Iter.Iter<K> {
-    Iter.map(entries(self), func (e : (K, V)) : K = e.0);
+    self.entries().map(func (k, _) = k);
   };
 
   /// Returns an iterator over the values in the map, traversing the entries in arbitary order.
@@ -312,7 +348,7 @@ module {
   /// }
   /// ```
   public func values<K, V>(self : HashMap<K, V>) : Iter.Iter<V> {
-    Iter.map(entries(self), func (e : (K, V)) : V = e.1);
+    self.entries().map(func (_, v) = v);
   };
 
   /// Determines whether a key-value map is empty.
@@ -330,7 +366,7 @@ module {
   /// }
   /// ```
   public func isEmpty<K, V>(self : HashMap<K, V>) : Bool {
-    self.size == 0
+    self.size_ == 0
   };
 
   /// Return the number of entries in a key-value map.
@@ -348,19 +384,22 @@ module {
   /// }
   /// ```
   public func size<K, V>(self : HashMap<K, V>) : Nat {
-    self.size
+    self.size_
   };
 
-  public func equal<K, V>(self : HashMap<K, V>, hashFn : (implicit : HashFn<K>), other : HashMap<K, V>, equal : (implicit : (V, V) -> Bool)) : Bool {
-    Hamt.equal(self.hamt, other.hamt, func(l, r) { Bucket.equal(l, r, hashFn.1, equal) })
+  public func equal<K, V>(
+    self : HashMap<K, V>,
+    other : HashMap<K, V>,
+    equalK : (implicit : (equal : (K, K) -> Bool)),
+    equalV : (implicit : (equal : (V, V) -> Bool)),
+  ) : Bool {
+    self.hamt.equal(other.hamt, func(l, r) { l.equal(r, equalK, equalV) })
   };
 
   module Bucket {
     public type T<K, V> = {
       var items : [var (K, V)];
     };
-
-    public type Self<K, V> = T<K, V>;
 
     public func add<K, V>(self : T<K, V>, eq : (K, K) -> Bool, key : K, value : V) : ?V {
       var i : Nat = 0;
@@ -373,7 +412,7 @@ module {
         };
         i += 1;
       };
-      self.items := VarArray.tabulate<(K, V)>(size + 1, func i = if (i != size) self.items[i] else (key, value));
+      self.items := VarArray.tabulate(size + 1 : Nat, func i = if (i != size) self.items[i] else (key, value));
       null
     };
 
@@ -396,7 +435,7 @@ module {
       while (i < size) {
         let (k, v) = self.items[i];
         if (eq(k, key)) {
-          self.items := VarArray.tabulate<(K, V)>(size - 1, func ix = if (ix < i) self.items[ix] else self.items[ix + 1]);
+          self.items := VarArray.tabulate(size - 1 : Nat, func ix = if (ix < i) self.items[ix] else self.items[ix + 1]);
           return ?v
         };
         i += 1;

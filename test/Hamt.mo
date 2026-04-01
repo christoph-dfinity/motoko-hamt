@@ -23,7 +23,7 @@ module {
   func hasEntry(k : Nat, v : Nat) : M.Matcher<Hamt<Nat>> {
     let eqVal : M.Matcher<?Nat> = M.equals(T.optional(T.natTestable, ?v));
     let matcher = M.contramap<?Nat, Hamt<Nat>>(eqVal, func map = Hamt.get(map, natHash(k)));
-    withDescription("Entry at " # Nat.toText(k) # " failed with:\n  ", matcher)
+    withDescription("Entry at " # k.toText() # " failed with:\n  ", matcher)
   };
 
   public func suite() : S.Suite {
@@ -44,14 +44,7 @@ module {
           };
           map
         }, do {
-          M.allOf(
-            Iter.toArray(
-              Iter.map(
-                Nat.range(0, 10_000),
-                func i = hasEntry(i, i)
-              )
-            )
-          )
+          M.allOf(Nat.range(0, 10_000).map(func i = hasEntry(i, i)).toArray())
         }),
     ]);
   };

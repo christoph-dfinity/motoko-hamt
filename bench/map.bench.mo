@@ -15,7 +15,7 @@ import OldHashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Trie "mo:base/Trie";
 
-import { type Seed; type HashFn; Blob = N } "../src/Types";
+import { type Seed; Blob = N } "../src/Types";
 
 module {
   public func init() : Bench.Bench {

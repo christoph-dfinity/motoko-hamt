@@ -1,12 +1,12 @@
-import Char "mo:core/Char";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
-import Nat32 "mo:core/Nat32";
 import Nat64 "mo:core/Nat64";
 import Runtime "mo:core/Runtime";
 import Stack "mo:core/Stack";
 import Text "mo:core/Text";
 import VarArray "mo:core/VarArray";
+
+import { showBinary } "./Utils";
 
 module {
   public type Hash = Nat64;
@@ -15,37 +15,11 @@ module {
   let BITS_PER_LEVEL = 6;
   let SUBKEY_MASK : Nat64 = 63;
 
-  public func showBinary(x : Hash) : Text {
-    var n = x;
-    var res = "";
-    for (i in Nat.range(0, 64)) {
-      if (i != 0 and i % BITS_PER_LEVEL == 0) res := "_" # res;
-      if (n & 1 == 1) { res := "1" # res } else { res := "0" # res };
-      n := n >> 1;
-    };
-    res;
-  };
-
-  public func showHex(x : Hash) : Text {
-    var n = x;
-    var res = "";
-    for (i in Nat.range(0, 8)) {
-      let digit = n & 15;
-      if (digit < 10) {
-        res := Nat64.toText(digit) # res;
-      } else {
-        res := Text.fromChar(Char.fromNat32(Nat32.fromNat64(digit + 87))) # res;
-      };
-      n := n >> 4;
-    };
-    res;
-  };
-
-  public func show<A>(showA : A -> Text, hamt : Hamt<A>) : Text {
+  public func toText<A>(self : Hamt<A>, toText : (implicit : A -> Text)) : Text {
     let showNode = func(node : Node<A>) : Text {
       switch (node) {
         case (#leaf(h, v)) {
-          "(#leaf " # showBinary(h) # " " # showA(v) # ")";
+          "(#leaf " # showBinary(h) # " " # toText(v) # ")";
         };
         case (#bitMapped n) {
           var res = "";
@@ -57,7 +31,7 @@ module {
         };
       };
     };
-    showNode(#bitMapped(hamt.root));
+    showNode(#bitMapped(self.root));
   };
 
   public func showStructure<A>(self : Hamt<A>) : Text {
@@ -81,7 +55,7 @@ module {
 
   public type Hamt<A> = {
     var root : Bitmapped<A>;
-    var size : Nat;
+    var size_ : Nat;
   };
 
   public func new<A>() : Hamt<A> = {
@@ -89,7 +63,7 @@ module {
       var bitmap = 0;
       var nodes = [var];
     };
-    var size = 0;
+    var size_ = 0;
   };
 
   public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
@@ -111,17 +85,17 @@ module {
       var bitmap = 0;
       var nodes = [var];
     };
-    self.size := 0
+    self.size_ := 0
   };
 
   public func get<A>(self : Hamt<A>, hash : Hash) : ?A {
-    let (_, _, #success(_, v)) = getWithAnchor(self.root, 0, hash) else return null;
+    let (_, _, #success(_, v)) = self.root.getWithAnchor(0, hash) else return null;
     ?v
   };
 
   public func insert<A>(self : Hamt<A>, hash : Hash, value : A) : ?A {
     var previous : ?A = null;
-    upsert(self, hash, func (prev : ?A) : A {
+    self.upsert(hash, func (prev) {
       previous := prev;
       value
     });
@@ -141,22 +115,22 @@ module {
         let ix = index(anchor.bitmap, pos);
         let newNodes = insertVarArray(anchor.nodes, #leaf((hash, update(null))), ix);
         anchor.nodes := newNodes;
-        self.size += 1;
+        self.size_ += 1;
       };
       case (#conflict(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
         let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, update(null));
         anchor.nodes[ix] := #bitMapped(newNode);
-        self.size += 1;
+        self.size_ += 1;
       };
     }
   };
 
   public func remove<A>(self : Hamt<A>, hash : Hash) : ?A {
-    switch (removeRec(self.root, 0, hash)) {
+    switch (self.root.removeRec(0, hash)) {
       case (#notFound) null;
       case (#success(l)) {
-        self.size -= 1;
+        self.size_ -= 1;
         ?l.1;
       };
       case (#gathered(_)) Runtime.trap("Must never gather the root node");
@@ -189,6 +163,7 @@ module {
   };
 
   type Bitmapped<A> = { var bitmap : Bitmap; var nodes : [var Node<A>] };
+
   type Leaf<A> = (Hash, A);
 
   type Anchor<A> = Bitmapped<A>;
@@ -199,22 +174,22 @@ module {
     result : { #success : Leaf<A>; #conflict : Leaf<A>; #missing },
   );
 
-  func getWithAnchor<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
+  func getWithAnchor<A>(self : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
     let pos = bitpos(hash, shift);
-    if ((anchor.bitmap & pos) == 0) {
-      return (shift, anchor, #missing);
+    if ((self.bitmap & pos) == 0) {
+      return (shift, self, #missing);
     };
-    let ix = index(anchor.bitmap, pos);
-    switch (anchor.nodes[ix]) {
+    let ix = index(self.bitmap, pos);
+    switch (self.nodes[ix]) {
       case (#leaf(l)) {
         if (l.0 == hash) {
-          (shift, anchor, #success(l)) ;
+          (shift, self, #success(l)) ;
         } else {
-          (shift, anchor, #conflict(l));
+          (shift, self, #conflict(l));
         };
       };
       case (#bitMapped(bm)) {
-        getWithAnchor(bm, shift + BITS_PER_LEVEL, hash);
+        bm.getWithAnchor(shift + BITS_PER_LEVEL, hash);
       }
     };
   };
@@ -243,20 +218,20 @@ module {
     #gathered : { newNode : Leaf<A>; removed : Leaf<A> };
   };
 
-  func removeRec<A>(anchor : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
+  func removeRec<A>(self : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
     let pos = bitpos(hash, shift);
-    if ((pos & anchor.bitmap) == 0) {
+    if ((pos & self.bitmap) == 0) {
       #notFound;
     } else {
-      let ix = index(anchor.bitmap, pos);
-      switch (anchor.nodes[ix]) {
+      let ix = index(self.bitmap, pos);
+      switch (self.nodes[ix]) {
         case (#bitMapped(n)) {
-          let result = removeRec(n, shift + BITS_PER_LEVEL, hash);
+          let result = n.removeRec(shift + BITS_PER_LEVEL, hash);
           let #gathered(g) = result else return result;
-          if (Nat64.bitcountNonZero(anchor.bitmap) == 1 and shift != 0) {
+          if (Nat64.bitcountNonZero(self.bitmap) == 1 and shift != 0) {
             return result
           } else {
-            anchor.nodes[ix] := #leaf(g.newNode);
+            self.nodes[ix] := #leaf(g.newNode);
             #success(g.removed)
           }
         };
@@ -264,15 +239,15 @@ module {
           if (hash != l.0) {
             return #notFound
           };
-          let rows = Nat64.bitcountNonZero(anchor.bitmap);
+          let rows = Nat64.bitcountNonZero(self.bitmap);
           // We never gather the root node
           if (rows == 1 and shift == 0) {
-            anchor.bitmap := 0;
-            anchor.nodes := [var];
+            self.bitmap := 0;
+            self.nodes := [var];
             return #success(l)
           };
           if (rows == 2) {
-            let other = if (ix == 1) { anchor.nodes[0] } else { anchor.nodes[1] };
+            let other = if (ix == 1) { self.nodes[0] } else { self.nodes[1] };
             switch (other) {
               case (#leaf(other)) {
                 // We never gather the root node
@@ -282,13 +257,13 @@ module {
               };
               case (_) {};
             };
-            anchor.bitmap &= ^pos;
-            anchor.nodes := [var other];
+            self.bitmap &= ^pos;
+            self.nodes := [var other];
             return #success(l)
           } else {
-            let newNodes : [var Node<A>] = removeVarArray(anchor.nodes, ix);
-            anchor.bitmap &= ^pos;
-            anchor.nodes := newNodes;
+            let newNodes : [var Node<A>] = removeVarArray(self.nodes, ix);
+            self.bitmap &= ^pos;
+            self.nodes := newNodes;
             return #success(l)
           };
         };
@@ -329,12 +304,13 @@ module {
     };
   };
 
-  public func equal<A>(self : Hamt<A>, other : Hamt<A>, equal : (A, A) -> Bool) : Bool {
-    if (self.size != other.size) { return false };
+  public func equal<A>(self : Hamt<A>, other : Hamt<A>, equal : (implicit : (A, A) -> Bool)) : Bool {
+    if (self.size_ != other.size_) { return false };
     equalRec(self.root, other.root, equal)
   };
 
   func equalRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
+    // We can use this fast structural equality check, because we canonicalize on deletion
     if (left.bitmap != right.bitmap) { return false };
     var i : Nat = 0;
     let size : Nat = left.nodes.size();

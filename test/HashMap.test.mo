@@ -9,7 +9,7 @@ import Array "mo:core/Array";
 import Option "mo:core/Option";
 import HashMap "../src/HashMap";
 import { type HashMap } "../src/HashMap";
-import { type Seed; type HashFn; Nat = N } "../src/Types";
+import { type Seed; Nat = N } "../src/Types";
 
 let { run; test; suite } = Suite;
 

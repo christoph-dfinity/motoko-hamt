@@ -288,6 +288,37 @@ module {
     };
   };
 
+  public func equal<A>(self : Hamt<A>, other : Hamt<A>, equal : (implicit : (A, A) -> Bool)) : Bool {
+    if (self.size_ != other.size_) { return false };
+    equalRec(self.root, other.root, equal)
+  };
+
+  func equalRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
+    // We can use this fast structural equality check, because we canonicalize on deletion
+    if (left.bitmap != right.bitmap) { return false };
+    var i : Nat = 0;
+    let size : Nat = left.nodes.size();
+    while (i < size) {
+      switch (left.nodes[i], right.nodes[i]) {
+        case (#leaf(lh, lv), #leaf(rh, rv)) {
+          if (lh != rh or not equal(lv, rv)) {
+            return false
+          };
+        };
+        case (#bitMapped(l), #bitMapped(r)) {
+          if (not equalRec(l, r, equal)) {
+            return false
+          }
+        };
+        case _ {
+          return false
+        };
+      };
+      i += 1;
+    };
+    true
+  };
+
   // Exposed for testing/debugging
   public func maxDepth<A>(self : Hamt<A>) : Nat {
     func depth<A>(node : Node<A>) : Nat {

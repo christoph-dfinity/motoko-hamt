@@ -71,7 +71,7 @@ let suite = S.suite("HAMT", [
     let map = Hamt.new<Nat>();
     ignore map.insert(0 : Nat64, 0);
     ignore map.insert(64 * 64 : Nat64, 64 * 64);
-    let nestedDepth = Hamt.maxDepth(map);
+    let nestedDepth = map.maxDepth();
     ignore map.remove(0 : Nat64);
     let depthAfterRemoval = map.maxDepth();
     (nestedDepth, depthAfterRemoval)
@@ -79,13 +79,31 @@ let suite = S.suite("HAMT", [
 ]);
 
 let suitePure = S.suite("pure/HAMT", [
+  S.test("equal empty maps", do {
+    PureHamt.equal(PureHamt.new<Nat>(), PureHamt.new());
+  }, M.equals(T.bool(true))),
+  S.test("equal same inserts", do {
+    let a = PureHamt.new<Nat>().add(0 : Nat64, 0).add(64 : Nat64, 64);
+    let b = PureHamt.new<Nat>().add(0 : Nat64, 0).add(64 : Nat64, 64);
+    PureHamt.equal(a, b);
+  }, M.equals(T.bool(true))),
+  S.test("equal false on different size", do {
+    let a = PureHamt.new<Nat>().add(0 : Nat64, 0);
+    let b = PureHamt.new<Nat>().add(0 : Nat64, 0).add(64 : Nat64, 64);
+    PureHamt.equal(a, b, func(l, r) { l == r });
+  }, M.equals(T.bool(false))),
+  S.test("equal false on different value same key", do {
+    let a = PureHamt.new<Nat>().add(0 : Nat64, 0);
+    let b = PureHamt.new<Nat>().add(0 : Nat64, 1);
+    PureHamt.equal(a, b);
+  }, M.equals(T.bool(false))),
   S.test("Test compaction on remove", do {
     var map : PureHamt.Hamt<Nat> = PureHamt.new();
-    map := PureHamt.add(map, 0 : Nat64, 0);
-    map := PureHamt.add(map, 64 * 64 : Nat64, 64 * 64);
-    let nestedDepth = PureHamt.maxDepth(map);
-    let (newHamt, _) = PureHamt.remove(map, (0 : Nat64));
-    let depthAfterRemoval = PureHamt.maxDepth(newHamt);
+    map := map.add(0 : Nat64, 0);
+    map := map.add(64 * 64 : Nat64, 64 * 64);
+    let nestedDepth = map.maxDepth();
+    let (newHamt, _) = map.remove((0 : Nat64));
+    let depthAfterRemoval = newHamt.maxDepth();
     (nestedDepth, depthAfterRemoval)
   }, M.equals(T.tuple2(T.natTestable, T.natTestable, (3, 1))))
 ]);

@@ -20,13 +20,13 @@ module {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.new<Nat, Text>(seed);
   ///   // insertion
-  ///   ignore HashMap.insert(map, HashMap.nat, 0, "Zero");
+  ///   ignore map.insert(0, "Zero");
   ///   // retrieval
-  ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Zero";
-  ///   assert HashMap.get(map, HashMap.nat, 1) == null;
+  ///   assert map.get(0) == ?"Zero";
+  ///   assert map.get(1) == null;
   ///   // removal
-  ///   ignore HashMap.remove(map, HashMap.nat, 0);
-  ///   assert HashMap.isEmpty(map);
+  ///   ignore map.remove(0);
+  ///   assert map.isEmpty();
   /// }
   /// ```
   ///
@@ -54,7 +54,7 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.new<Nat, Text>(seed);
-  ///   assert HashMap.size(map) == 0;
+  ///   assert map.size() == 0;
   /// }
   /// ```
   public func new<K, V>(seed : Seed) : HashMap<K, V> {
@@ -71,7 +71,7 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.singleton<Nat, Text>(seed, 0, "Zero");
-  ///   assert Iter.toArray(HashMap.entries(map)) == [(0, "Zero")];
+  ///   assert map.entries().toArray() == [(0, "Zero")];
   /// }
   /// ```
   public func singleton<K, V>(seed : Seed, key : K, value : V, hash : (implicit : (Seed, K) -> Nat64)) : HashMap<K, V> {
@@ -92,11 +92,11 @@ module {
   ///     Iter.fromArray([(0, "Zero"), (2, "Two"), (1, "One")]);
   ///
   ///   let seed : HashMap.Seed = (0, 0);
-  ///   let map = HashMap.fromIter<Nat, Text>(seed, HashMap.nat, iter);
+  ///   let map = HashMap.fromIter<Nat, Text>(iter, seed);
   ///
-  ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Zero";
-  ///   assert HashMap.get(map, HashMap.nat, 1) == ?"One";
-  ///   assert HashMap.get(map, HashMap.nat, 2) == ?"Two";
+  ///   assert map.get(0) == ?"Zero";
+  ///   assert map.get(1) == ?"One";
+  ///   assert map.get(2) == ?"Two";
   /// }
   /// ```
   public func fromIter<K, V>(
@@ -133,13 +133,13 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.new<Nat, Text>(seed);
-  ///   assert HashMap.insert(map, HashMap.nat, 0, "Zero") == null;
-  ///   assert HashMap.insert(map, HashMap.nat, 1, "One") == null;
-  ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Zero";
-  ///   assert HashMap.get(map, HashMap.nat, 1) == ?"One";
+  ///   assert map.insert(0, "Zero") == null;
+  ///   assert map.insert(1, "One") == null;
+  ///   assert map.get(0) == ?"Zero";
+  ///   assert map.get(1) == ?"One";
   ///
-  ///   assert HashMap.insert(map, HashMap.nat, 0, "Nil") == ?"Zero";
-  ///   assert HashMap.get(map, HashMap.nat, 0) == ?"Nil";
+  ///   assert map.insert(0, "Nil") == ?"Zero";
+  ///   assert map.get(0) == ?"Nil";
   /// }
   /// ```
   public func insert<K, V>(
@@ -178,12 +178,12 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
-  ///     [(0, "Zero"), (1, "One"), (2, "Two")].values()
+  ///     [(0, "Zero"), (1, "One"), (2, "Two")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   assert HashMap.get(map, HashMap.nat, 1) == ?"One";
-  ///   assert HashMap.get(map, HashMap.nat, 3) == null;
+  ///   assert map.get(1) == ?"One";
+  ///   assert map.get(3) == null;
   /// }
   /// ```
   public func get<K, V>(
@@ -208,15 +208,15 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   assert HashMap.remove(map, HashMap.nat, 1) = ?"One";
-  ///   assert HashMap.get(map, HashMap.nat, 1) = null;
-  ///   assert HashMap.size(map) == 2;
-  ///   assert HashMap.remove(map, HashMap.nat, 42) == null;
-  ///   assert HashMap.size(map) == 2;
+  ///   assert map.remove(1) == ?"One";
+  ///   assert map.get(1) == null;
+  ///   assert map.size() == 2;
+  ///   assert map.remove(42) == null;
+  ///   assert map.size() == 2;
   /// }
   /// ```
   public func remove<K, V>(
@@ -246,12 +246,12 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   assert HashMap.containsKey(map, HashMap.nat, 1);
-  ///   assert not Map.containsKey(map, HashMap.nat, 3);
+  ///   assert map.containsKey(1);
+  ///   assert not map.containsKey(3);
   /// }
   /// ```
   public func containsKey<K, V>(
@@ -274,11 +274,11 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   for ((key, value) in HashMap.entries(map)) {
+  ///   for ((key, value) in map.entries()) {
   ///     Debug.print(Nat.toText(key) # " => " # value);
   ///   }
   /// }
@@ -316,11 +316,11 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   for (key in HashMap.keys(map)) {
+  ///   for (key in map.keys()) {
   ///     Debug.print(Nat.toText(key));
   ///   }
   /// }
@@ -338,11 +338,11 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.fromIter<Nat, Text>(
-  ///     seed, HashMap.nat,
   ///     [(0, "Zero"), (2, "Two"), (1, "One")].values(),
+  ///     seed,
   ///   );
   ///
-  ///   for (value in HashMap.values(map)) {
+  ///   for (value in map.values()) {
   ///     Debug.print(value);
   ///   }
   /// }
@@ -360,9 +360,9 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.new<Nat, Text>(seed);
-  ///   assert HashMap.isEmpty(map);
-  ///   ignore HashMap.insert(map, HashMap.nat, 0, "Hello");
-  ///   assert not HashMap.isEmpty(map);
+  ///   assert map.isEmpty();
+  ///   ignore map.insert(0, "Hello");
+  ///   assert not map.isEmpty();
   /// }
   /// ```
   public func isEmpty<K, V>(self : HashMap<K, V>) : Bool {
@@ -378,9 +378,9 @@ module {
   /// persistent actor {
   ///   let seed : HashMap.Seed = (0, 0);
   ///   let map = HashMap.new<Nat, Text>(seed);
-  ///   assert HashMap.size(map) == 0;
-  ///   ignore HashMap.insert(map, HashMap.nat, 0, "Zero")
-  ///   assert HashMap.size(map) == 1;
+  ///   assert map.size() == 0;
+  ///   ignore map.insert(0, "Zero");
+  ///   assert map.size() == 1;
   /// }
   /// ```
   public func size<K, V>(self : HashMap<K, V>) : Nat {

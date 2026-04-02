@@ -1,7 +1,5 @@
 /// Functional Key-Value HashMaps
 
-// TODO: Implement equals
-
 import Array "mo:core/Array";
 import Hamt "Hamt";
 import Iter "mo:core/Iter";
@@ -429,6 +427,15 @@ module {
     self.size_
   };
 
+  public func equal<K, V>(
+    self : HashMap<K, V>,
+    other : HashMap<K, V>,
+    equalK : (implicit : (equal : (K, K) -> Bool)),
+    equalV : (implicit : (equal : (V, V) -> Bool)),
+  ) : Bool {
+    self.hamt.equal(other.hamt, func(l, r) { Bucket.equal(l, r, equalK, equalV) })
+  };
+
   module Bucket {
     public type T<K, V> = [(K, V)];
 
@@ -472,6 +479,21 @@ module {
         i += 1;
       };
       null;
+    };
+
+    public func equal<K, V>(self : T<K, V>, other : T<K, V>, eqK : (K, K) -> Bool, eqV : (V, V) -> Bool) : Bool {
+      if (self.size() != other.size()) {
+        return false
+      };
+      label outer for ((ks, vs) in self.vals()) {
+        for ((ko, vo) in other.vals()) {
+          if (eqK(ks, ko) and eqV(vs, vo)) {
+            continue outer;
+          };
+        };
+        return false
+      };
+      true;
     };
   };
 }

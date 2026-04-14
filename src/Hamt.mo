@@ -12,7 +12,7 @@ module {
   public type Hash = Nat64;
   public type Bitmap = Nat64;
 
-  let BITS_PER_LEVEL = 6;
+  let BITS_PER_LEVEL : Nat64 = 6;
   let SUBKEY_MASK : Nat64 = 63;
 
   public func toText<A>(self : Hamt<A>, toText : (implicit : A -> Text)) : Text {
@@ -68,14 +68,14 @@ module {
 
   public func singleton<A>(hash : Hash, value : A) : Hamt<A> {
     let hamt : Hamt<A> = new();
-    ignore insert(hamt, hash, value);
+    ignore hamt.insert(hash, value);
     hamt
   };
 
   public func fromIter<A>(iter : Iter.Iter<(Hash, A)>) : Hamt<A> {
     let hamt : Hamt<A> = new();
     for ((h, v) in iter) {
-      ignore insert(hamt, h, v);
+      ignore hamt.insert(h, v);
     };
     hamt
   };
@@ -89,7 +89,7 @@ module {
   };
 
   public func get<A>(self : Hamt<A>, hash : Hash) : ?A {
-    let (_, _, #success(_, v)) = self.root.getWithAnchor(0, hash) else return null;
+    let (_, _, #success(_, v)) = self.root.getWithAnchor(0 : Nat64, hash) else return null;
     ?v
   };
 
@@ -103,7 +103,7 @@ module {
   };
 
   public func upsert<A>(self : Hamt<A>, hash : Hash, update : ?A -> A) {
-    let (shift, anchor, result) = getWithAnchor(self.root, 0, hash);
+    let (shift, anchor, result) = self.root.getWithAnchor(0 : Nat64, hash);
     switch (result) {
       case (#success(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
@@ -113,7 +113,7 @@ module {
         let pos = bitpos(hash, shift);
         anchor.bitmap |= pos;
         let ix = index(anchor.bitmap, pos);
-        let newNodes = insertVarArray(anchor.nodes, #leaf((hash, update(null))), ix);
+        let newNodes = anchor.nodes.insertVarArray(#leaf((hash, update(null))), ix);
         anchor.nodes := newNodes;
         self.size_ += 1;
       };
@@ -127,7 +127,7 @@ module {
   };
 
   public func remove<A>(self : Hamt<A>, hash : Hash) : ?A {
-    switch (self.root.removeRec(0, hash)) {
+    switch (self.root.removeRec(0 : Nat64, hash)) {
       case (#notFound) null;
       case (#success(l)) {
         self.size_ -= 1;
@@ -141,20 +141,20 @@ module {
   //   (hash >> Nat64.fromNat(shift)) & SUBKEY_MASK;
   // };
 
-  func bitpos(hash : Hash, shift : Nat) : Nat64 {
+  func bitpos(hash : Hash, shift : Nat64) : Nat64 {
     // Inlined mask
-    1 << ((hash >> Nat64.fromNat(shift)) & SUBKEY_MASK);
+    1 << ((hash >> shift) & SUBKEY_MASK);
   };
 
   func index(bitmap : Bitmap, pos : Nat64) : Nat {
-    Nat64.toNat(Nat64.bitcountNonZero(bitmap & (pos - 1)));
+    Nat64.toNat(Nat64.bitcountNonZero(bitmap & (pos -% 1)));
   };
 
   // Same as chaining bitpos and index, but saves a few allocations by inlining
-  func hashIndex(hash : Hash, bitmap : Bitmap, shift : Nat) : Nat {
+  func hashIndex(hash : Hash, bitmap : Bitmap, shift : Nat64) : Nat {
     // Inlined bitpos
-    let pos = 1 << ((hash >> Nat64.fromNat(shift)) & SUBKEY_MASK);
-    Nat64.toNat(Nat64.bitcountNonZero(bitmap & (pos - 1)));
+    let pos = 1 << ((hash >> shift) & SUBKEY_MASK);
+    Nat64.toNat(Nat64.bitcountNonZero(bitmap & (pos -% 1)));
   };
 
   type Node<A> = {
@@ -169,12 +169,12 @@ module {
   type Anchor<A> = Bitmapped<A>;
 
   type GetResult<A> = (
-    shift : Nat,
+    shift : Nat64,
     anchor : Anchor<A>,
     result : { #success : Leaf<A>; #conflict : Leaf<A>; #missing },
   );
 
-  func getWithAnchor<A>(self : Anchor<A>, shift : Nat, hash : Hash) : GetResult<A> {
+  func getWithAnchor<A>(self : Anchor<A>, shift : Nat64, hash : Hash) : GetResult<A> {
     let pos = bitpos(hash, shift);
     if ((self.bitmap & pos) == 0) {
       return (shift, self, #missing);
@@ -189,12 +189,12 @@ module {
         };
       };
       case (#bitMapped(bm)) {
-        bm.getWithAnchor(shift + BITS_PER_LEVEL, hash);
+        bm.getWithAnchor(shift +% BITS_PER_LEVEL, hash);
       }
     };
   };
 
-  func mergeLeafs<A>(shift : Nat, leaf : Leaf<A>, h2 : Hash, v2 : A) : Bitmapped<A> {
+  func mergeLeafs<A>(shift : Nat64, leaf : Leaf<A>, h2 : Hash, v2 : A) : Bitmapped<A> {
     let nextPos1 = bitpos(leaf.0, shift);
     let nextPos2 = bitpos(h2, shift);
     if (nextPos1 != nextPos2) {
@@ -207,7 +207,7 @@ module {
       { var bitmap; var nodes };
     } else {
       let bitmap = nextPos1;
-      let newNode : Bitmapped<A> = mergeLeafs<A>(shift + BITS_PER_LEVEL, leaf, h2, v2);
+      let newNode : Bitmapped<A> = mergeLeafs<A>(shift +% BITS_PER_LEVEL, leaf, h2, v2);
       { var bitmap; var nodes = [var #bitMapped(newNode)] };
     };
   };
@@ -218,7 +218,7 @@ module {
     #gathered : { newNode : Leaf<A>; removed : Leaf<A> };
   };
 
-  func removeRec<A>(self : Anchor<A>, shift : Nat, hash : Hash) : RemoveResult<A> {
+  func removeRec<A>(self : Anchor<A>, shift : Nat64, hash : Hash) : RemoveResult<A> {
     let pos = bitpos(hash, shift);
     if ((pos & self.bitmap) == 0) {
       #notFound;
@@ -226,7 +226,7 @@ module {
       let ix = index(self.bitmap, pos);
       switch (self.nodes[ix]) {
         case (#bitMapped(n)) {
-          let result = n.removeRec(shift + BITS_PER_LEVEL, hash);
+          let result = n.removeRec(shift +% BITS_PER_LEVEL, hash);
           let #gathered(g) = result else return result;
           if (Nat64.bitcountNonZero(self.bitmap) == 1 and shift != 0) {
             return result
@@ -261,7 +261,7 @@ module {
             self.nodes := [var other];
             return #success(l)
           } else {
-            let newNodes : [var Node<A>] = removeVarArray(self.nodes, ix);
+            let newNodes : [var Node<A>] = self.nodes.removeVarArray(ix);
             self.bitmap &= ^pos;
             self.nodes := newNodes;
             return #success(l)
@@ -281,11 +281,11 @@ module {
     let state : IterState<A> = { var stack = Stack.singleton({ node = self.root; var index = 0 }) };
     object {
       public func next() : ?(Hash, A) {
-        label outer loop {
-          let ?current = Stack.peek(state.stack) else { return null };
+        loop {
+          let ?current = state.stack.peek() else { return null };
           if (current.node.nodes.size() <= current.index) {
-            ignore Stack.pop(state.stack);
-            continue outer;
+            ignore state.stack.pop();
+            continue;
           };
           switch (current.node.nodes[current.index]) {
             case (#leaf(l)) {
@@ -294,8 +294,8 @@ module {
             };
             case (#bitMapped(bm)) {
               current.index += 1;
-              Stack.push(state.stack, { node = bm; var index = 0 });
-              continue outer;
+              state.stack.push({ node = bm; var index = 0 });
+              continue;
             }
           };
         };
@@ -306,23 +306,23 @@ module {
 
   public func equal<A>(self : Hamt<A>, other : Hamt<A>, equal : (implicit : (A, A) -> Bool)) : Bool {
     if (self.size_ != other.size_) { return false };
-    equalRec(self.root, other.root, equal)
+    self.root.equalRec(other.root, equal)
   };
 
-  func equalRec<A>(left : Bitmapped<A>, right : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
+  func equalRec<A>(self : Bitmapped<A>, other : Bitmapped<A>, equal : (A, A) -> Bool) : Bool {
     // We can use this fast structural equality check, because we canonicalize on deletion
-    if (left.bitmap != right.bitmap) { return false };
+    if (self.bitmap != other.bitmap) { return false };
     var i : Nat = 0;
-    let size : Nat = left.nodes.size();
+    let size : Nat = self.nodes.size();
     while (i < size) {
-      switch (left.nodes[i], right.nodes[i]) {
+      switch (self.nodes[i], other.nodes[i]) {
         case (#leaf(lh, lv), #leaf(rh, rv)) {
           if (lh != rh or not equal(lv, rv)) {
             return false
           };
         };
         case (#bitMapped(l), #bitMapped(r)) {
-          if (not equalRec(l, r, equal)) {
+          if (not l.equalRec(r, equal)) {
             return false
           }
         };
@@ -352,22 +352,22 @@ module {
     depth(#bitMapped(self.root))
   };
 
-  func insertVarArray<A>(as : [var A], a : A, ix : Nat) : [var A] {
+  func insertVarArray<A>(self : [var A], a : A, ix : Nat) : [var A] {
     VarArray.tabulate(
-      as.size() + 1,
+      self.size() + 1,
       func(i : Nat) : A {
-        if (i < ix) { as[i] }
+        if (i < ix) { self[i] }
         else if (i == ix) { a }
-        else { as[i - 1] };
+        else { self[i - 1] };
       },
     );
   };
 
-  func removeVarArray<A>(as : [var A], ix : Nat) : [var A] {
+  func removeVarArray<A>(self : [var A], ix : Nat) : [var A] {
     VarArray.tabulate(
-      (as.size() - 1 : Nat),
+      (self.size() - 1 : Nat),
       func(i : Nat) : A {
-        if (i < ix) { as[i] } else { as[i + 1] };
+        if (i < ix) { self[i] } else { self[i + 1] };
       },
     );
   };

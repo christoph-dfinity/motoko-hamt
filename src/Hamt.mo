@@ -119,7 +119,7 @@ module {
       };
       case (#conflict(prev)) {
         let ix = hashIndex(hash, anchor.bitmap, shift);
-        let newNode = mergeLeafs<A>(shift + BITS_PER_LEVEL, prev, hash, update(null));
+        let newNode = mergeLeafs<A>(shift +% BITS_PER_LEVEL, prev, hash, update(null));
         anchor.nodes[ix] := #bitMapped(newNode);
         self.size_ += 1;
       };
